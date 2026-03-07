@@ -13,7 +13,7 @@ const MENU = [
       { href:'/configurations/tirages',         label:'Tirages' },
       { href:'/configurations/primes',          label:'Primes' },
       { href:'/configurations/tete-fiche',      label:'Tête Fiche' },
-      { href:'/configurations/mariage-gratuit', label:'Mariage gratuit' },
+      { href:'/configurations/mariage-gratuit', label:'Mariage Gratuit' },
       { href:'/configurations/utilisateurs',    label:'Utilisateurs' },
     ]
   },
@@ -51,29 +51,40 @@ export default function Layout({ children }) {
 
   const logout = () => { clearAuth(); router.push('/'); };
 
-  const toggleMenu = (i) => setOpenMenu(prev => prev === i ? null : i);
-
   return (
     <div style={{ display:'flex', minHeight:'100vh', background:'#f1f5f9' }}>
 
-      {/* SIDEBAR */}
-      <div style={{ width:220, background:'#1e293b', color:'white', flexShrink:0, display:'flex', flexDirection:'column', minHeight:'100vh', position:'sticky', top:0, height:'100vh', overflowY:'auto' }}>
+      {/* SIDEBAR — position fixe, ne bloque pas le contenu */}
+      <div style={{
+        width: 220,
+        minWidth: 220,
+        background: '#1e293b',
+        color: 'white',
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100vh',
+        position: 'sticky',
+        top: 0,
+        overflowY: 'auto',
+        flexShrink: 0,
+      }}>
 
         {/* LOGO */}
-        <div style={{ padding:'14px', background:'#f59e0b', textAlign:'center' }}>
-          <div style={{ fontWeight:900, fontSize:12, color:'#000', letterSpacing:0.5 }}>🎰 LA-PROBITE-BORLETTE</div>
+        <div style={{ padding:'12px 14px', background:'#f59e0b', textAlign:'center', flexShrink:0 }}>
+          <div style={{ fontWeight:900, fontSize:12, color:'#000' }}>🎰 LA-PROBITE-BORLETTE</div>
           {user && <div style={{ fontSize:10, color:'#333', marginTop:3 }}>{user.prenom} {user.nom} — {user.role}</div>}
         </div>
 
         {/* MENU */}
-        <nav style={{ flex:1, padding:'6px 0' }}>
+        <nav style={{ flex:1, padding:'4px 0', overflowY:'auto' }}>
           {MENU.map((item, i) => {
             if (item.sub) {
               const isActive = item.sub.some(s => router.pathname === s.href);
               const isOpen   = openMenu === i;
               return (
                 <div key={i}>
-                  <div onClick={() => toggleMenu(i)}
+                  <div
+                    onClick={() => setOpenMenu(isOpen ? null : i)}
                     style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'9px 14px', cursor:'pointer', background: isActive ? 'rgba(245,158,11,0.15)' : 'transparent' }}>
                     <span style={{ fontSize:12, fontWeight:700, color: isActive ? '#f59e0b' : '#cbd5e1' }}>
                       {item.icon} {item.label}
@@ -81,9 +92,11 @@ export default function Layout({ children }) {
                     <span style={{ fontSize:9, color:'#64748b' }}>{isOpen ? '▲' : '▼'}</span>
                   </div>
                   {isOpen && (
-                    <div style={{ background:'rgba(0,0,0,0.25)' }}>
+                    <div style={{ background:'rgba(0,0,0,0.2)' }}>
                       {item.sub.map((s, j) => (
-                        <div key={j} onClick={() => router.push(s.href)}
+                        <div
+                          key={j}
+                          onClick={() => router.push(s.href)}
                           style={{ padding:'7px 14px 7px 26px', cursor:'pointer', fontSize:11, fontWeight: router.pathname===s.href ? '700' : '400', color: router.pathname===s.href ? '#f59e0b' : '#94a3b8', background: router.pathname===s.href ? 'rgba(245,158,11,0.1)' : 'transparent' }}>
                           {s.label}
                         </div>
@@ -94,7 +107,9 @@ export default function Layout({ children }) {
               );
             }
             return (
-              <div key={i} onClick={() => router.push(item.href)}
+              <div
+                key={i}
+                onClick={() => router.push(item.href)}
                 style={{ display:'flex', alignItems:'center', gap:8, padding:'9px 14px', cursor:'pointer', fontSize:12, fontWeight:700, color: router.pathname===item.href ? '#f59e0b' : '#cbd5e1', background: router.pathname===item.href ? 'rgba(245,158,11,0.15)' : 'transparent' }}>
                 {item.icon} {item.label}
               </div>
@@ -103,7 +118,7 @@ export default function Layout({ children }) {
         </nav>
 
         {/* LOGOUT */}
-        <div style={{ padding:10, borderTop:'1px solid rgba(255,255,255,0.1)' }}>
+        <div style={{ padding:10, borderTop:'1px solid rgba(255,255,255,0.1)', flexShrink:0 }}>
           <button onClick={logout}
             style={{ width:'100%', padding:'9px', background:'#dc2626', color:'white', border:'none', borderRadius:6, fontWeight:700, cursor:'pointer', fontSize:12 }}>
             🚪 Déconnexion
@@ -111,8 +126,14 @@ export default function Layout({ children }) {
         </div>
       </div>
 
-      {/* CONTENU PRINCIPAL */}
-      <div style={{ flex:1, padding:20, overflowY:'auto', minHeight:'100vh' }}>
+      {/* CONTENU PRINCIPAL — prend tout l'espace restant */}
+      <div style={{
+        flex: 1,
+        padding: 20,
+        overflowY: 'auto',
+        minHeight: '100vh',
+        boxSizing: 'border-box',
+      }}>
         {children}
       </div>
 
