@@ -10,10 +10,11 @@ export default function AgentsPage() {
   const [filter,    setFilter]    = useState('actif');
   const [search,    setSearch]    = useState('');
   const [page,      setPage]      = useState(0);
-  const [pos,       setPos]       = useState([]);
-  const [agents,    setAgents]    = useState([]);
-  const [loading,   setLoading]   = useState(false);
-  const [msg,       setMsg]       = useState('');
+  const [pos,          setPos]          = useState([]);
+  const [agents,       setAgents]       = useState([]);
+  const [superviseurs, setSuperviseurs] = useState([]);
+  const [loading,      setLoading]      = useState(false);
+  const [msg,          setMsg]          = useState('');
   const PER_PAGE = 10;
 
   // Formulaire ajout POS
@@ -21,7 +22,7 @@ export default function AgentsPage() {
     succursale:'', deviceId:'', zone:'', nom:'', prenom:'',
     telephone:'', identifiant:'', password:'',
     agentPct:0, supPct:0, credit:'Libre', balanceGain:'Libre',
-    prime:'60|20|10',
+    prime:'60|20|10', superviseurId:'',
   });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -31,12 +32,14 @@ export default function AgentsPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [posRes, agentsRes] = await Promise.all([
+      const [posRes, agentsRes, supRes] = await Promise.all([
         api.get('/api/admin/pos').catch(() => ({ data: [] })),
         api.get('/api/admin/agents').catch(() => ({ data: [] })),
+        api.get('/api/admin/superviseurs').catch(() => ({ data: [] })),
       ]);
       setPos(Array.isArray(posRes.data) ? posRes.data : []);
       setAgents(Array.isArray(agentsRes.data) ? agentsRes.data : []);
+      setSuperviseurs(Array.isArray(supRes.data) ? supRes.data : []);
     } finally { setLoading(false); }
   };
 
@@ -72,7 +75,7 @@ export default function AgentsPage() {
       });
       setMsg('✅ POS enregistré avec succès!');
       setShowForm(false);
-      setForm({ succursale:'', deviceId:'', zone:'', nom:'', prenom:'', telephone:'', identifiant:'', password:'', agentPct:0, supPct:0, credit:'Libre', balanceGain:'Libre', prime:'60|20|10' });
+      setForm({ succursale:'', deviceId:'', zone:'', nom:'', prenom:'', telephone:'', identifiant:'', password:'', agentPct:0, supPct:0, credit:'Libre', balanceGain:'Libre', prime:'60|20|10', superviseurId:'' });
       await loadData();
       setTimeout(() => setMsg(''), 3000);
     } catch (err) {
@@ -112,9 +115,10 @@ export default function AgentsPage() {
   const searched = (arr) => !search ? arr : arr.filter(r => Object.values(r).some(v => String(v).toLowerCase().includes(search.toLowerCase())));
 
   const TABS = [
-    { key:'branches', label:'Branches POS' },
-    { key:'appareils', label:'Appareils POS' },
-    { key:'agentspos', label:'Agents & POS' },
+    { key:'branches',     label:'Branches POS' },
+    { key:'appareils',    label:'Appareils POS' },
+    { key:'agentspos',    label:'Agents & POS' },
+    { key:'superviseurs', label:'Superviseurs' },
   ];
 
   const Field = ({ label, name, required, type='text', placeholder='' }) => (
@@ -342,6 +346,11 @@ export default function AgentsPage() {
             </>
           )}
 
+          {/* ── TAB 4: SUPERVISEURS ── */}
+          {activeTab === 'superviseurs' && (
+            <SuperviseurTab superviseurs={superviseurs} agents={agents} onRefresh={loadData} api={api} />
+          )}
+
         </div>
 
         {/* ── MODAL AJOUT POS ── */}
@@ -391,6 +400,23 @@ export default function AgentsPage() {
                     {TIRAGES_PRIMES.map(p => <option key={p} value={p}>{p}</option>)}
                   </select>
                 </div>
+              </div>
+
+              <div style={{ marginTop:12 }}>
+                <label style={{ display:'block', fontWeight:700, fontSize:12, marginBottom:4 }}>👤 Superviseur (opsyonèl)</label>
+                <select value={form.superviseurId} onChange={e=>setForm(f=>({...f,superviseurId:e.target.value}))}
+                  style={{ width:'100%', padding:'9px 12px', border:'1.5px solid #ddd', borderRadius:6, fontSize:13, boxSizing:'border-box' }}>
+                  <option value=''>— Klike si li gen yon superviseur —</option>
+                  {superviseurs.map(s => (
+                    <option key={s.id} value={s.id}>{s.prenom} {s.nom} ({s.username})</option>
+                  ))}
+                  {agents.filter(a=>a.role==='superviseur').map(s => (
+                    <option key={s.id} value={s.id}>{s.prenom} {s.nom} — Sup ({s.username})</option>
+                  ))}
+                </select>
+                <p style={{ color:'#666', fontSize:11, margin:'4px 0 0' }}>
+                  💡 Si ajan an travay anba yon superviseur, chwazi l isit.
+                </p>
               </div>
 
               <div style={{ marginTop:12 }}>
@@ -445,6 +471,23 @@ export default function AgentsPage() {
                 </div>
               </div>
 
+              {/* BOULE AUTOMATIQUE (GRAP) */}
+              <div style={{ background:'#fffbeb', border:'1px solid #fcd34d', borderRadius:8, padding:12, marginTop:14 }}>
+                <h4 style={{ margin:'0 0 8px', fontSize:13, fontWeight:800, color:'#92400e' }}>🎯 Boule Otomatik (GRAP)</h4>
+                <p style={{ margin:'0 0 8px', fontSize:12, color:'#78350f' }}>
+                  Si opsyon sa aktive, POS la ka jenere tout boule pou yon chif otomatikman.<br/>
+                  Egz: GRAP 5 = 05, 15, 25, 35, 45, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 65, 75, 85, 95
+                </p>
+                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                  <input type='checkbox' id='grapActive' checked={form.grapActive||false}
+                    onChange={e=>setForm(f=>({...f,grapActive:e.target.checked}))}
+                    style={{ width:18, height:18, cursor:'pointer' }} />
+                  <label htmlFor='grapActive' style={{ fontWeight:700, fontSize:13, cursor:'pointer', color:'#92400e' }}>
+                    Aktive GRAP pou POS sa a
+                  </label>
+                </div>
+              </div>
+
               {/* BOUTONS */}
               <div style={{ display:'flex', gap:10, marginTop:16 }}>
                 <button onClick={() => setShowForm(false)}
@@ -462,5 +505,141 @@ export default function AgentsPage() {
 
       </div>
     </Layout>
+  );
+}
+
+// ── COMPOSANT SUPERVISEUR TAB ──────────────────────────────────────────────
+function SuperviseurTab({ superviseurs, agents, onRefresh, api }) {
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving]     = useState(false);
+  const [msg, setMsg]           = useState('');
+  const [form, setForm]         = useState({
+    nom:'', prenom:'', username:'', password:'', telephone:'',
+    commission: 0, agentIds: [],
+  });
+
+  const handleSave = async () => {
+    if (!form.nom || !form.prenom || !form.username || !form.password) {
+      setMsg('❌ Ranpli tout chan obligatwa yo'); return;
+    }
+    setSaving(true);
+    try {
+      await api.post('/api/admin/agents', {
+        nom: form.nom, prenom: form.prenom,
+        username: form.username, password: form.password,
+        telephone: form.telephone, role: 'superviseur',
+        commission: form.commission,
+      });
+      setMsg('✅ Superviseur kreye!');
+      setShowForm(false);
+      setForm({ nom:'', prenom:'', username:'', password:'', telephone:'', commission:0, agentIds:[] });
+      onRefresh();
+      setTimeout(() => setMsg(''), 3000);
+    } catch { setMsg('❌ Erè — eseye ankò'); }
+    finally { setSaving(false); }
+  };
+
+  const supList = [...superviseurs, ...agents.filter(a => a.role === 'superviseur')];
+  // deduplicate
+  const seen = new Set();
+  const uniqueSups = supList.filter(s => { if (seen.has(s.id||s._id)) return false; seen.add(s.id||s._id); return true; });
+
+  return (
+    <div>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+        <h3 style={{ margin:0, fontWeight:800, fontSize:16, color:'#7c3aed' }}>👔 Superviseurs</h3>
+        <button onClick={() => setShowForm(true)}
+          style={{ background:'#7c3aed', color:'white', border:'none', borderRadius:6, padding:'9px 18px', fontWeight:700, cursor:'pointer', fontSize:13 }}>
+          ➕ Kreye Superviseur
+        </button>
+      </div>
+
+      {msg && (
+        <div style={{ background: msg.startsWith('✅')?'#dcfce7':'#fee2e2', border:`1px solid ${msg.startsWith('✅')?'#16a34a':'#dc2626'}`, borderRadius:8, padding:12, marginBottom:12, fontWeight:700, color: msg.startsWith('✅')?'#16a34a':'#dc2626' }}>
+          {msg}
+        </div>
+      )}
+
+      {/* TABLE SUPERVISEURS */}
+      <div style={{ overflowX:'auto' }}>
+        <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
+          <thead>
+            <tr style={{ background:'#f3e8ff' }}>
+              {['Superieur','Nom','Prénom','Pseudo','Rôle',''].map(h => (
+                <th key={h} style={{ padding:'10px 12px', textAlign:'left', fontWeight:700, borderBottom:'2px solid #7c3aed', color:'#7c3aed' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {uniqueSups.length === 0 ? (
+              <tr><td colSpan={6} style={{ padding:24, textAlign:'center', color:'#888', fontStyle:'italic' }}>
+                Pa gen superviseur. Klike "Kreye Superviseur" pou ajoute youn.
+              </td></tr>
+            ) : uniqueSups.map((s, i) => (
+              <tr key={s.id||s._id||i} style={{ borderBottom:'1px solid #e9d5ff', background: i%2===0?'white':'#faf5ff' }}>
+                <td style={{ padding:'10px 12px', color:'#888' }}>n/a</td>
+                <td style={{ padding:'10px 12px', fontWeight:700 }}>{s.nom}</td>
+                <td style={{ padding:'10px 12px' }}>{s.prenom}</td>
+                <td style={{ padding:'10px 12px', color:'#7c3aed', fontWeight:700 }}>{s.username}</td>
+                <td style={{ padding:'10px 12px' }}>
+                  <span style={{ background:'#f3e8ff', color:'#7c3aed', borderRadius:12, padding:'3px 10px', fontWeight:700, fontSize:11 }}>
+                    superviseur
+                  </span>
+                </td>
+                <td style={{ padding:'10px 12px' }}>
+                  <button onClick={() => {
+                    if (confirm(`Efase superviseur ${s.prenom} ${s.nom}?`)) {
+                      api.delete(`/api/admin/agents/${s.id||s._id}`).then(onRefresh).catch(() => alert('Erè'));
+                    }
+                  }}
+                    style={{ background:'#dc2626', color:'white', border:'none', borderRadius:4, padding:'5px 10px', cursor:'pointer', fontSize:11, fontWeight:700 }}>
+                    Efase
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* MODAL CRÉER SUPERVISEUR */}
+      {showForm && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <div style={{ background:'white', borderRadius:12, padding:24, width:'95%', maxWidth:480, maxHeight:'90vh', overflowY:'auto' }}>
+            <h3 style={{ margin:'0 0 20px', fontWeight:900, fontSize:18, color:'#7c3aed' }}>👔 Kreye Superviseur</h3>
+
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
+              {[['nom','Nom *',''],['prenom','Prénom *',''],['username','Pseudo (Login) *',''],['password','Mot de passe *',''],['telephone','Téléphone',''],['commission','% Commission','0']].map(([key,label,ph]) => (
+                <div key={key} style={{ gridColumn: key==='username'||key==='password' ? 'span 1' : undefined }}>
+                  <label style={{ display:'block', fontWeight:700, fontSize:12, marginBottom:4, color:'#555' }}>{label}</label>
+                  <input
+                    type={key==='password'?'password':'text'}
+                    value={form[key]}
+                    onChange={e => setForm(f => ({...f,[key]:e.target.value}))}
+                    placeholder={ph}
+                    style={{ width:'100%', padding:'9px 12px', border:'1.5px solid #ddd', borderRadius:6, fontSize:13, boxSizing:'border-box' }}
+                  />
+                </div>
+              ))}
+            </div>
+
+            <div style={{ background:'#f3e8ff', borderRadius:8, padding:10, marginBottom:16, fontSize:12, color:'#7c3aed' }}>
+              💡 Superviseur an pral gen aksè a yon tableau de bord espesyal. Li ka wè ak jere ajan ki anba li.
+            </div>
+
+            <div style={{ display:'flex', gap:10 }}>
+              <button onClick={handleSave} disabled={saving}
+                style={{ flex:1, padding:'12px', background:saving?'#ccc':'#7c3aed', color:'white', border:'none', borderRadius:8, fontWeight:800, fontSize:14, cursor:saving?'not-allowed':'pointer' }}>
+                {saving ? '⏳ Ap kreye...' : '✅ Kreye Superviseur'}
+              </button>
+              <button onClick={() => setShowForm(false)}
+                style={{ flex:1, padding:'12px', background:'#f1f5f9', color:'#555', border:'none', borderRadius:8, fontWeight:700, fontSize:14, cursor:'pointer' }}>
+                Anile
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

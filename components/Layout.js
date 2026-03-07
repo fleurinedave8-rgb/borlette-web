@@ -13,6 +13,7 @@ const navItems = [
     { href:'/configurations/mariage-gratuit', label:'Mariage gratuit' },
     { href:'/configurations/tirages', label:'Tirages' },
     { href:'/configurations/primes', label:'Primes' },
+    { href:'/configurations/tete-fiche', label:'Tête Fiche' },
     { href:'/configurations/utilisateurs', label:'Utilisateurs' },
   ]},
   { label:'Surveillance', icon:'🖥', sub:[
@@ -22,6 +23,7 @@ const navItems = [
     { href:'/surveillance/controle-agent', label:'Controle agent' },
     { href:'/surveillance/fiches-agent', label:'Fiches par agent' },
     { href:'/surveillance/lots-gagnant', label:'Lots gagnant' },
+    { href:'/surveillance/pos-connectes', label:'POS Connectés 🟢' },
     { href:'/surveillance/tracabilite', label:'Traçabilité' },
     { href:'/surveillance/demmande-elimination', label:'Demmande élimination' },
   ]},
