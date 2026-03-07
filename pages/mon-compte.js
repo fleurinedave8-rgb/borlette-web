@@ -4,14 +4,30 @@ import api from '../utils/api';
 import { getUser, saveAuth } from '../utils/auth';
 
 const defaultConfig = {
-  nom: '', adresse: '', telephone: '', message: '',
-  boulPaBoul: false, codeBarres: false, credit: '', box: '',
-  serveur: '', doubleTirage: false, eliminerSansConfirmation: 'non',
-  facade: '', langue: 'Français', tailleImprimante: '58mm',
-  boulARevers: false, mariageGratuit: false, whatsapp: '',
-  boulPaye: false, pointe: false, mariageAutomatique: false,
-  loto4Automatique: false, quantiteBoules: '', quantiteMariages: '',
-  quantiteMariagesGratuits: '', teteFicheLoto3: 'droite',
+  // Informations de base
+  nom: '', adresse: '', telephone: '', message: '', whatsapp: '',
+  // Options système
+  boulPaBoul: false, codeBarres: false, box: false,
+  serveur: '', doubleTirage: false, facade: false,
+  eliminerSansConfirmation: 'non', langue: 'Français',
+  tailleImprimante: '58mm',
+  // Options jeu
+  boulARevers: false, mariageGratuit: false,
+  boulPaire: false, pointe: false,
+  mariageAutomatique: false, loto4Automatique: false,
+  modifierLot: false, voirFicheGagnant: true,
+  // Permissions réimpression
+  reImprimerFiche: true,
+  // Quantités limites
+  kantiteBoul: 40,
+  kantiteMariaj: 120,
+  kantiteLoto3: 20,
+  kantiteLoto4: 10,
+  // Délai élimination
+  intervalMinuteEliminerFiche: 30,
+  // Tête fiche
+  teteFicheLoto3: 'droite',
+  credit: '',
 };
 
 export default function MonCompte() {
@@ -150,23 +166,33 @@ export default function MonCompte() {
 
               {/* Champs texte */}
               {[
-                ['nom',       'Nom'],
+                ['nom',       'Nom serveur'],
                 ['adresse',   'Adresse'],
                 ['telephone', 'Téléphone'],
-                ['message',   'Message'],
+                ['message',   'Message ticket'],
                 ['credit',    'Crédit'],
-                ['box',       'Box'],
                 ['serveur',   'Serveur'],
-                ['facade',    'Façade'],
                 ['whatsapp',  'WhatsApp'],
-                ['quantiteBoules',          'Quantité de boules'],
-                ['quantiteMariages',        'Quantité de mariages'],
-                ['quantiteMariagesGratuits','Quantité de mariages gratuits'],
               ].map(([key, label]) => (
                 <div key={key} style={{ background:'#f8f9fa', borderRadius:8, padding:12 }}>
                   <label style={{ display:'block', fontSize:11, color:'#888', marginBottom:4, fontWeight:600 }}>{label}</label>
-                  <input value={config[key]} onChange={e => setConfig(p=>({...p,[key]:e.target.value}))}
+                  <input value={config[key]||''} onChange={e => setConfig(p=>({...p,[key]:e.target.value}))}
                     style={{ width:'100%', border:'none', background:'transparent', fontSize:14, fontWeight:600, outline:'none', boxSizing:'border-box' }} />
+                </div>
+              ))}
+
+              {/* Champs numériques — Quantités */}
+              {[
+                ['kantiteBoul',  'Kantite Boul (défaut: 40)'],
+                ['kantiteMariaj','Kantite Mariage (défaut: 120)'],
+                ['kantiteLoto3', 'Kantite Loto3 (défaut: 20)'],
+                ['kantiteLoto4', 'Kantite Loto4 (défaut: 10)'],
+                ['intervalMinuteEliminerFiche','Delai Elimine (minutes, défaut: 30)'],
+              ].map(([key, label]) => (
+                <div key={key} style={{ background:'#f8f9fa', borderRadius:8, padding:12 }}>
+                  <label style={{ display:'block', fontSize:11, color:'#888', marginBottom:4, fontWeight:600 }}>{label}</label>
+                  <input type="number" value={config[key]||''} onChange={e => setConfig(p=>({...p,[key]:e.target.value}))}
+                    style={{ width:'100%', border:'none', background:'transparent', fontSize:16, fontWeight:700, outline:'none', color:'#1a73e8', boxSizing:'border-box' }} />
                 </div>
               ))}
 
@@ -223,14 +249,19 @@ export default function MonCompte() {
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
                 {[
                   ['boulPaBoul',        'Boul pa boul'],
-                  ['codeBarres',        'Code-barres'],
+                  ['codeBarres',        'Code-barres (Barcode)'],
                   ['doubleTirage',      'Double tirage'],
                   ['boulARevers',       'Boul à revers'],
+                  ['boulPaire',         'Boul paire sèlman'],
                   ['mariageGratuit',    'Mariage gratuit'],
-                  ['boulPaye',          'Boul payé'],
                   ['pointe',            'Pointe'],
                   ['mariageAutomatique','Mariage automatique'],
                   ['loto4Automatique',  'Loto4 automatique'],
+                  ['modifierLot',       'Modifye lot'],
+                  ['voirFicheGagnant',  'Wè fichè ganyan'],
+                  ['reImprimerFiche',   'Reanprime fichè'],
+                  ['facade',            'Façade (vitrine)'],
+                  ['box',               'Box (kachèt boul)'],
                 ].map(([key, label]) => (
                   <div key={key} onClick={() => setConfig(p=>({...p,[key]:!p[key]}))}
                     style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:'#f8f9fa', borderRadius:8, padding:'10px 14px', cursor:'pointer' }}>

@@ -24,6 +24,7 @@ const navItems = [
     { href:'/surveillance/fiches-agent', label:'Fiches par agent' },
     { href:'/surveillance/lots-gagnant', label:'Lots gagnant' },
     { href:'/surveillance/pos-connectes', label:'POS Connectés 🟢' },
+    { href:'/surveillance/scraper-status', label:'🤖 Scraper Tiraj' },
     { href:'/surveillance/tracabilite', label:'Traçabilité' },
     { href:'/surveillance/demmande-elimination', label:'Demmande élimination' },
   ]},
