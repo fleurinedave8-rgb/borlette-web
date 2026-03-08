@@ -24,7 +24,7 @@ export default function AgentsPage() {
     agentPct:0, supPct:0, credit:'Libre', balanceGain:'Libre',
     prime:'60|20|10', superviseurId:'',
     // Tete fich pou enpresyon
-    tete1:'', tete2:'', tete3:'', tete4:'Fich sa valid pou 90 jou',
+    tete1:'', tete2:'', tete3:'', tete4:'Fich sa valid pou 90 jou', messageAdmin:'',
   });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -75,6 +75,7 @@ export default function AgentsPage() {
         agentPct: form.agentPct, supPct: form.supPct,
         credit: form.credit,
         agentUsername: form.identifiant,
+        messageAdmin: form.messageAdmin || '',
         tete: {
           ligne1: form.tete1 || `${form.prenom} ${form.nom}`,
           ligne2: form.tete2 || form.zone || '',
@@ -84,7 +85,7 @@ export default function AgentsPage() {
       });
       setMsg('✅ POS enregistré avec succès!');
       setShowForm(false);
-      setForm({ succursale:'', deviceId:'', zone:'', nom:'', prenom:'', telephone:'', identifiant:'', password:'', agentPct:0, supPct:0, credit:'Libre', balanceGain:'Libre', prime:'60|20|10', superviseurId:'', tete1:'', tete2:'', tete3:'', tete4:'Fich sa valid pou 90 jou' });
+      setForm({ succursale:'', deviceId:'', zone:'', nom:'', prenom:'', telephone:'', identifiant:'', password:'', agentPct:0, supPct:0, credit:'Libre', balanceGain:'Libre', prime:'60|20|10', superviseurId:'', tete1:'', tete2:'', tete3:'', tete4:'Fich sa valid pou 90 jou', messageAdmin:'' });
       await loadData();
       setTimeout(() => setMsg(''), 3000);
     } catch (err) {
@@ -519,6 +520,21 @@ export default function AgentsPage() {
                     />
                   </div>
                 ))}
+              </div>
+
+              {/* MESSAGE ADMIN */}
+              <div style={{ background:'#fef3c7', border:'1px solid #f59e0b', borderRadius:8, padding:12, marginTop:14 }}>
+                <h4 style={{ margin:'0 0 8px', fontSize:13, fontWeight:800, color:'#92400e' }}>📢 Mesaj Admin pou POS sa a</h4>
+                <p style={{ margin:'0 0 8px', fontSize:11, color:'#78350f' }}>
+                  Mesaj sa ap parèt nan ekran akèy aplikasyon POS lan (notifikasyon, avètisman, enstriksyon).
+                </p>
+                <textarea
+                  value={form.messageAdmin || ''}
+                  onChange={e => setForm(f => ({ ...f, messageAdmin: e.target.value }))}
+                  placeholder="Egz: Bienveni! Ou ka vann jiska 10pm. Kontak: +509 xxxx xxxx"
+                  rows={3}
+                  style={{ width:'100%', padding:'9px 12px', border:'1.5px solid #f59e0b', borderRadius:6, fontSize:13, resize:'vertical', boxSizing:'border-box', fontFamily:'inherit' }}
+                />
               </div>
 
               {/* BOUTONS */}
