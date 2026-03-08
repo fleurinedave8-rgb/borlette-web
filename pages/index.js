@@ -172,10 +172,43 @@ export default function LoginPage() {
         </div>
       </section>
 
-      {/* FOOTER */}
-      <footer style={{ background:'#111', padding:'20px', textAlign:'center', color:'#888', fontSize:13 }}>
-        <p style={{ margin:0 }}>©2026 <span style={{ color:'#f59e0b', fontWeight:700 }}>LA-PROBITE-BORLETTE</span>. Tous droits réservés.</p>
-        <p style={{ margin:'6px 0 0', fontSize:11 }}>Développé par SGL-TECH | +509 34 35 9470</p>
+      {/* FOOTER ANIMÉ */}
+      <footer style={{ background:'linear-gradient(135deg,#0a0a0f,#0f0f1a)', padding:'32px 20px 24px', textAlign:'center', borderTop:'1px solid #1a1a2e' }}>
+        {/* Ligne déco animée */}
+        <div style={{ display:'flex', justifyContent:'center', alignItems:'center', gap:8, marginBottom:16 }}>
+          <div style={{ height:1, width:60, background:'linear-gradient(90deg,transparent,#f59e0b)' }} />
+          <span style={{ fontSize:18 }}>⚡</span>
+          <div style={{ height:1, width:60, background:'linear-gradient(90deg,#3b82f6,transparent)' }} />
+        </div>
+
+        <p style={{ margin:'0 0 8px', color:'#ccc', fontSize:14 }}>
+          ©2026 <span style={{ color:'#f59e0b', fontWeight:900, letterSpacing:1 }}>LA-PROBITE-BORLETTE</span>. Tout dwa rezève.
+        </p>
+
+        {/* Badge NEXTSTEPDIGITAL */}
+        <div style={{ display:'inline-flex', alignItems:'center', gap:8, marginTop:12,
+          background:'rgba(255,255,255,0.03)', border:'1px solid rgba(59,130,246,0.3)',
+          borderRadius:24, padding:'8px 20px',
+        }}>
+          <div style={{
+            width:28, height:28, borderRadius:'50%',
+            background:'linear-gradient(135deg,#f59e0b,#3b82f6)',
+            display:'flex', alignItems:'center', justifyContent:'center',
+            fontSize:14, fontWeight:900, color:'white',
+          }}>N</div>
+          <div style={{ textAlign:'left' }}>
+            <div style={{
+              fontSize:12, fontWeight:900, letterSpacing:2,
+              background:'linear-gradient(90deg,#f59e0b,#3b82f6)',
+              WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
+            }}>NEXTSTEPDIGITAL</div>
+            <div style={{ fontSize:10, color:'#555' }}>📞 +509 41 76 24 10</div>
+          </div>
+        </div>
+
+        <p style={{ margin:'12px 0 0', fontSize:10, color:'#333', letterSpacing:1 }}>
+          POWERED BY NEXTSTEPDIGITAL SOLUTIONS
+        </p>
       </footer>
 
       {/* LOGIN MODAL */}
@@ -245,5 +278,6 @@ export default function LoginPage() {
         </div>
       )}
     </div>
+    </>
   );
 }

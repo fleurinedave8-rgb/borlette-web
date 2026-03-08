@@ -23,6 +23,8 @@ export default function AgentsPage() {
     telephone:'', identifiant:'', password:'',
     agentPct:0, supPct:0, credit:'Libre', balanceGain:'Libre',
     prime:'60|20|10', superviseurId:'',
+    // Tete fich pou enpresyon
+    tete1:'', tete2:'', tete3:'', tete4:'Fich sa valid pou 90 jou',
   });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -72,10 +74,17 @@ export default function AgentsPage() {
         succursale: form.succursale, prime: form.prime,
         agentPct: form.agentPct, supPct: form.supPct,
         credit: form.credit,
+        agentUsername: form.identifiant,
+        tete: {
+          ligne1: form.tete1 || `${form.prenom} ${form.nom}`,
+          ligne2: form.tete2 || form.zone || '',
+          ligne3: form.tete3 || form.telephone || '',
+          ligne4: form.tete4 || 'Fich sa valid pou 90 jou',
+        }
       });
       setMsg('✅ POS enregistré avec succès!');
       setShowForm(false);
-      setForm({ succursale:'', deviceId:'', zone:'', nom:'', prenom:'', telephone:'', identifiant:'', password:'', agentPct:0, supPct:0, credit:'Libre', balanceGain:'Libre', prime:'60|20|10', superviseurId:'' });
+      setForm({ succursale:'', deviceId:'', zone:'', nom:'', prenom:'', telephone:'', identifiant:'', password:'', agentPct:0, supPct:0, credit:'Libre', balanceGain:'Libre', prime:'60|20|10', superviseurId:'', tete1:'', tete2:'', tete3:'', tete4:'Fich sa valid pou 90 jou' });
       await loadData();
       setTimeout(() => setMsg(''), 3000);
     } catch (err) {
@@ -486,6 +495,30 @@ export default function AgentsPage() {
                     Aktive GRAP pou POS sa a
                   </label>
                 </div>
+              </div>
+
+              {/* TETE FICH — Info enpresyon pou chak POS */}
+              <div style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:8, padding:12, marginTop:14 }}>
+                <h4 style={{ margin:'0 0 10px', fontSize:13, fontWeight:800, color:'#1e40af' }}>🖨️ Tete Fich (Enpresyon)</h4>
+                <p style={{ margin:'0 0 10px', fontSize:11, color:'#3b82f6' }}>
+                  Chak POS ka gen tete fich diferan ki ap parèt sou bilye enprime yo.
+                </p>
+                {[
+                  ['tete1', 'Liy 1 — Non POS / Biznès', `${form.prenom} ${form.nom}`],
+                  ['tete2', 'Liy 2 — Adrès', form.zone || ''],
+                  ['tete3', 'Liy 3 — Telefòn', form.telephone || ''],
+                  ['tete4', 'Liy 4 — Mesaj pye fich', 'Fich sa valid pou 90 jou'],
+                ].map(([name, label, ph]) => (
+                  <div key={name} style={{ marginBottom:8 }}>
+                    <label style={{ display:'block', fontWeight:700, fontSize:11, marginBottom:3, color:'#1e40af' }}>{label}</label>
+                    <input
+                      value={form[name] || ''}
+                      onChange={e => setForm(f => ({ ...f, [name]: e.target.value }))}
+                      placeholder={ph}
+                      style={{ width:'100%', padding:'8px 10px', border:'1.5px solid #bfdbfe', borderRadius:6, fontSize:13, boxSizing:'border-box' }}
+                    />
+                  </div>
+                ))}
               </div>
 
               {/* BOUTONS */}

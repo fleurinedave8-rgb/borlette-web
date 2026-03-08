@@ -231,6 +231,31 @@ export default function Layout({ children }) {
             <span style={{ width:18, textAlign:'center' }}>⏻</span>
             <span style={{ fontSize:13 }}>Dekonekte</span>
           </div>
+
+          {/* NEXTSTEPDIGITAL branding */}
+          <div style={{
+            padding:'12px 14px 8px',
+            borderTop:'1px solid #1a1a1a',
+            marginTop:4,
+            textAlign:'center',
+          }}>
+            <div style={{
+              display:'inline-flex', alignItems:'center', gap:6,
+              background:'linear-gradient(135deg, #1a1a2e, #16213e)',
+              border:'1px solid #0f3460',
+              borderRadius:8, padding:'6px 12px',
+            }}>
+              <span style={{ fontSize:10 }}>⚡</span>
+              <div>
+                <div style={{
+                  fontSize:9, fontWeight:900, letterSpacing:1,
+                  background:'linear-gradient(90deg, #f59e0b, #3b82f6)',
+                  WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
+                }}>NEXTSTEPDIGITAL</div>
+                <div style={{ fontSize:8, color:'#555', letterSpacing:.5 }}>+509 41 76 24 10</div>
+              </div>
+            </div>
+          </div>
         </div>
       </nav>
 
