@@ -46,6 +46,9 @@ export default function Dashboard() {
   const [fetching,   setFetching]   = useState(false);
   const [lastUpdate, setLastUpdate] = useState(null);
   const [activeTab,  setActiveTab]  = useState('overview');
+  const [liveStats,   setLiveStats]   = useState({ newFiches:0, jwe:0, pete:0, totalLive:0 });
+  const [transactions, setTransactions] = useState([]);
+  const [wsLive,       setWsLive]       = useState(false);
 
   // Modal antre rezilta
   const [showModal,  setShowModal]  = useState(false);
@@ -60,7 +63,43 @@ export default function Dashboard() {
     if (!isLoggedIn()) { router.push('/'); return; }
     loadAll();
     const iv = setInterval(loadAll, 3 * 60 * 1000);
-    return () => clearInterval(iv);
+
+    // WebSocket tan reyèl
+    let ws;
+    const connectWS = () => {
+      try {
+        const base = (process.env.NEXT_PUBLIC_API_URL || 'https://web-production-9549c.up.railway.app')
+          .replace('https://','wss://').replace('http://','ws://');
+        ws = new WebSocket(`${base}/ws`);
+        ws.onopen  = () => setWsLive(true);
+        ws.onclose = () => { setWsLive(false); setTimeout(connectWS, 8000); };
+        ws.onerror = () => ws.close();
+        ws.onmessage = (e) => {
+          try {
+            const msg = JSON.parse(e.data);
+            if (msg.type === 'nouvelle_fiche') {
+              setLiveStats(prev => ({
+                newFiches: prev.newFiches + 1,
+                jwe:  prev.jwe,      // jwe mete ajou lè rezilta antre
+                pete: prev.pete + 1, // tout fich konte kòm pete jiska rezilta
+                totalLive: prev.totalLive + (msg.total||0),
+              }));
+              setTransactions(prev => [
+                { ...msg, type_tx:'fiche', icon:'🎫', label:`Fich ${msg.ticket}`, ts: Date.now() },
+                ...prev
+              ].slice(0, 30));
+            } else if (msg.type === 'nouveau_resultat') {
+              setTransactions(prev => [
+                { type_tx:'resultat', icon:'🎯', label:`Rezilta ${msg.tirage}: ${msg.lot1}/${msg.lot2||'—'}/${msg.lot3||'—'}`, ts: Date.now(), tirage: msg.tirage },
+                ...prev
+              ].slice(0, 30));
+            }
+          } catch {}
+        };
+      } catch {}
+    };
+    connectWS();
+    return () => { clearInterval(iv); try { ws?.close(); } catch {} };
   }, []);
 
   const loadAll = useCallback(async () => {
@@ -143,6 +182,9 @@ export default function Dashboard() {
             <div style={{ color:'rgba(255,255,255,0.7)', fontSize:12, marginTop:2 }}>
               {new Date().toLocaleDateString('fr-HT', { weekday:'long', year:'numeric', month:'long', day:'numeric' })}
               {lastUpdate && <span style={{ marginLeft:12 }}>· Mizajou: {fmtTime(lastUpdate)}</span>}
+              <span style={{ marginLeft:12, color: wsLive?'#86efac':'#fca5a5', fontWeight:700 }}>
+                {wsLive ? '🔴 LIVE' : '⚪ Hòs Liy'}
+              </span>
             </div>
           </div>
           <div style={{ display:'flex', gap:8 }}>
@@ -190,6 +232,44 @@ export default function Dashboard() {
                   sub="Dènye 5 minit" onClick={() => router.push('/surveillance/pos-connectes')} />
               </div>
             </div>
+
+            {/* LIVE ACTIVITY */}
+            {(liveStats.newFiches > 0 || transactions.length > 0) && (
+              <div style={{ marginBottom:20 }}>
+                <div style={{ fontSize:11, fontWeight:800, color:'#888', marginBottom:10, textTransform:'uppercase', letterSpacing:1, display:'flex', alignItems:'center', gap:8 }}>
+                  🔴 LIVE — Aktivite Tan Reyèl
+                  <span style={{ background:'#dc2626', color:'white', borderRadius:10, padding:'1px 8px', fontSize:10 }}>LIVE</span>
+                </div>
+                <div style={{ display:'flex', gap:10, marginBottom:12, flexWrap:'wrap' }}>
+                  {[
+                    ['🎫 Nouvo Fich', liveStats.newFiches, '#1a73e8'],
+                    ['💰 Vant Live', `${fmt(liveStats.totalLive)} G`, '#16a34a'],
+                    ['🏆 Jwe/Gagnant', liveStats.jwe, '#f59e0b'],
+                    ['💨 Pete (Pèdi)', liveStats.pete, '#6b7280'],
+                  ].map(([l,v,c]) => (
+                    <div key={l} style={{ background:'white', borderRadius:10, padding:'12px 16px', border:`2px solid ${c}22`, borderLeft:`4px solid ${c}`, flex:1, minWidth:120 }}>
+                      <div style={{ fontSize:11, color:'#666', fontWeight:600 }}>{l}</div>
+                      <div style={{ fontSize:20, fontWeight:900, color:c, marginTop:2 }}>{v}</div>
+                    </div>
+                  ))}
+                </div>
+                {/* FLUX TRANSACTIONS */}
+                {transactions.length > 0 && (
+                  <div style={{ background:'white', borderRadius:10, padding:14, maxHeight:200, overflowY:'auto', border:'1px solid #f0f0f0' }}>
+                    <div style={{ fontWeight:800, fontSize:12, color:'#333', marginBottom:8 }}>Dènye Aktivite:</div>
+                    {transactions.map((tx, i) => (
+                      <div key={i} style={{ display:'flex', alignItems:'center', gap:10, padding:'6px 0', borderBottom:'1px solid #f8f9fa', fontSize:12 }}>
+                        <span style={{ fontSize:16 }}>{tx.icon}</span>
+                        <span style={{ flex:1, fontWeight:600 }}>{tx.label}</span>
+                        {tx.total > 0 && <span style={{ color:'#16a34a', fontWeight:800 }}>{fmt(tx.total)} G</span>}
+                        <span style={{ color:'#aaa', fontSize:10 }}>{tx.agent||''}</span>
+                        <span style={{ color:'#ccc', fontSize:10 }}>{new Date(tx.ts).toLocaleTimeString('fr',{hour:'2-digit',minute:'2-digit'})}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* STATS KIMILATIF */}
             <div style={{ marginBottom:20, marginTop:16 }}>

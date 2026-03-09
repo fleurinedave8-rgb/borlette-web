@@ -28,6 +28,10 @@ export default function AgentsPage() {
   });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  // Modal EDIT POS
+  const [editPos,     setEditPos]     = useState(null); // POS obje pou edite
+  const [editForm,    setEditForm]    = useState({});
+  const [savingEdit,  setSavingEdit]  = useState(false);
 
   useEffect(() => { loadData(); }, []);
 
@@ -91,6 +95,53 @@ export default function AgentsPage() {
     } catch (err) {
       alert('Erè: ' + (err?.response?.data?.message || err.message));
     } finally { setSaving(false); }
+  };
+
+  // ── Ouvri modal edit POS ─────────────────────────────────
+  const openEditPos = (p) => {
+    setEditPos(p);
+    setEditForm({
+      nom:          p.nom || '',
+      adresse:      p.adresse || '',
+      telephone:    p.telephone || '',
+      succursale:   p.succursale || '',
+      prime:        p.prime || '60|20|10',
+      agentPct:     p.agentPct || 0,
+      credit:       p.credit || 'Illimité',
+      messageAdmin: p.messageAdmin || '',
+      tete1: p.tete?.ligne1 || p.nom || '',
+      tete2: p.tete?.ligne2 || p.adresse || '',
+      tete3: p.tete?.ligne3 || p.telephone || '',
+      tete4: p.tete?.ligne4 || 'Fich sa valid pou 90 jou',
+    });
+  };
+
+  const saveEditPos = async () => {
+    if (!editPos) return;
+    setSavingEdit(true);
+    try {
+      await api.put(`/api/admin/pos/${editPos._id}`, {
+        nom:          editForm.nom,
+        adresse:      editForm.adresse,
+        telephone:    editForm.telephone,
+        succursale:   editForm.succursale,
+        prime:        editForm.prime,
+        agentPct:     parseFloat(editForm.agentPct) || 0,
+        credit:       editForm.credit,
+        messageAdmin: editForm.messageAdmin,
+        tete: {
+          ligne1: editForm.tete1,
+          ligne2: editForm.tete2,
+          ligne3: editForm.tete3,
+          ligne4: editForm.tete4,
+        },
+      });
+      setMsg('✅ POS mete ajou avèk siksè!');
+      setEditPos(null);
+      await loadData();
+      setTimeout(() => setMsg(''), 3000);
+    } catch (e) { alert('Erè: ' + (e?.response?.data?.message || e.message)); }
+    setSavingEdit(false);
   };
 
   const handleToggle = async (id, actif) => {
@@ -247,10 +298,16 @@ export default function AgentsPage() {
                           </span>
                         </td>
                         <td style={{ padding:'10px 12px' }}>
-                          <button onClick={() => handleDelete(p._id)}
-                            style={{ background:'#dc2626', color:'white', border:'none', borderRadius:4, padding:'5px 10px', cursor:'pointer', fontSize:11, fontWeight:700 }}>
-                            Action
-                          </button>
+                          <div style={{ display:'flex', gap:6 }}>
+                            <button onClick={() => openEditPos(p)}
+                              style={{ background:'#1a73e8', color:'white', border:'none', borderRadius:4, padding:'5px 10px', cursor:'pointer', fontSize:11, fontWeight:700 }}>
+                              ✏️ Modifye
+                            </button>
+                            <button onClick={() => handleDelete(p._id)}
+                              style={{ background:'#fee2e2', color:'#dc2626', border:'1px solid #fca5a5', borderRadius:4, padding:'5px 8px', cursor:'pointer', fontSize:11, fontWeight:700 }}>
+                              🗑️
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -294,10 +351,16 @@ export default function AgentsPage() {
                           <span style={{ background:'#f3f4f6', borderRadius:20, padding:'3px 10px', fontSize:12 }}>0</span>
                         </td>
                         <td style={{ padding:'10px 12px' }}>
-                          <button onClick={() => handleDelete(p._id)}
-                            style={{ background:'#1a73e8', color:'white', border:'none', borderRadius:4, padding:'5px 10px', cursor:'pointer', fontSize:11, fontWeight:700 }}>
-                            Action
-                          </button>
+                          <div style={{ display:'flex', gap:6 }}>
+                            <button onClick={() => openEditPos(p)}
+                              style={{ background:'#1a73e8', color:'white', border:'none', borderRadius:4, padding:'5px 10px', cursor:'pointer', fontSize:11, fontWeight:700 }}>
+                              ✏️ Modifye
+                            </button>
+                            <button onClick={() => handleDelete(p._id)}
+                              style={{ background:'#fee2e2', color:'#dc2626', border:'1px solid #fca5a5', borderRadius:4, padding:'5px 8px', cursor:'pointer', fontSize:11, fontWeight:700 }}>
+                              🗑️
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -547,6 +610,91 @@ export default function AgentsPage() {
                   style={{ flex:2, padding:12, background:saving?'#ccc':'#16a34a', color:'white', border:'none', borderRadius:6, fontWeight:700, cursor:saving?'default':'pointer', fontSize:14 }}>
                   {saving ? 'Ap sove...' : '✅ Enregistrer POS'}
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ══ MODAL EDIT POS ══ */}
+        {editPos && (
+          <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:16, overflowY:'auto' }}>
+            <div style={{ background:'white', borderRadius:14, padding:0, width:'100%', maxWidth:560, maxHeight:'90vh', overflowY:'auto', boxShadow:'0 20px 60px rgba(0,0,0,0.3)' }}>
+
+              {/* Header */}
+              <div style={{ background:'linear-gradient(135deg,#1a73e8,#0d47a1)', padding:'16px 20px', borderRadius:'14px 14px 0 0', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                <div>
+                  <div style={{ color:'white', fontWeight:900, fontSize:16 }}>✏️ Modifye POS</div>
+                  <div style={{ color:'rgba(255,255,255,0.7)', fontSize:12, marginTop:2, fontFamily:'monospace' }}>{editPos.posId}</div>
+                </div>
+                <button onClick={() => setEditPos(null)}
+                  style={{ background:'rgba(255,255,255,0.15)', border:'none', color:'white', borderRadius:8, width:32, height:32, cursor:'pointer', fontSize:16 }}>✕</button>
+              </div>
+
+              <div style={{ padding:20 }}>
+                {/* INFOS DEBAZ */}
+                <h4 style={{ margin:'0 0 10px', fontSize:13, fontWeight:800, color:'#333' }}>📋 Enfòmasyon Debaz</h4>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:14 }}>
+                  {[['nom','Non POS'],['adresse','Adrès'],['telephone','Telefòn'],['succursale','Succursale']].map(([key,label]) => (
+                    <div key={key}>
+                      <label style={{ display:'block', fontWeight:700, fontSize:11, marginBottom:4, color:'#555' }}>{label}</label>
+                      <input value={editForm[key]||''} onChange={e => setEditForm(f=>({...f,[key]:e.target.value}))}
+                        style={{ width:'100%', padding:'8px 10px', border:'1.5px solid #ddd', borderRadius:6, fontSize:13, boxSizing:'border-box' }} />
+                    </div>
+                  ))}
+                </div>
+
+                {/* PARAMÈTRES */}
+                <h4 style={{ margin:'0 0 10px', fontSize:13, fontWeight:800, color:'#333' }}>⚙️ Paramèt</h4>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10, marginBottom:14 }}>
+                  <div>
+                    <label style={{ display:'block', fontWeight:700, fontSize:11, marginBottom:4, color:'#555' }}>Prime</label>
+                    <select value={editForm.prime||'60|20|10'} onChange={e => setEditForm(f=>({...f,prime:e.target.value}))}
+                      style={{ width:'100%', padding:'8px 10px', border:'1.5px solid #ddd', borderRadius:6, fontSize:13 }}>
+                      {['60|20|10','50|15|5','70|25|15'].map(p => <option key={p}>{p}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display:'block', fontWeight:700, fontSize:11, marginBottom:4, color:'#555' }}>% Komisyon Ajan</label>
+                    <input type="number" min="0" max="100" value={editForm.agentPct||0} onChange={e => setEditForm(f=>({...f,agentPct:e.target.value}))}
+                      style={{ width:'100%', padding:'8px 10px', border:'1.5px solid #ddd', borderRadius:6, fontSize:13, boxSizing:'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ display:'block', fontWeight:700, fontSize:11, marginBottom:4, color:'#555' }}>Kredi Vant</label>
+                    <input value={editForm.credit||'Illimité'} onChange={e => setEditForm(f=>({...f,credit:e.target.value}))}
+                      style={{ width:'100%', padding:'8px 10px', border:'1.5px solid #ddd', borderRadius:6, fontSize:13, boxSizing:'border-box' }} />
+                  </div>
+                </div>
+
+                {/* TETE FICH */}
+                <h4 style={{ margin:'0 0 10px', fontSize:13, fontWeight:800, color:'#1e40af' }}>🖨️ Tete Fich</h4>
+                <div style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:8, padding:12, marginBottom:14 }}>
+                  {[['tete1','Liy 1 — Non'],['tete2','Liy 2 — Adrès'],['tete3','Liy 3 — Telefòn'],['tete4','Liy 4 — Pye fich']].map(([key,label]) => (
+                    <div key={key} style={{ marginBottom:8 }}>
+                      <label style={{ display:'block', fontWeight:700, fontSize:11, marginBottom:3, color:'#1e40af' }}>{label}</label>
+                      <input value={editForm[key]||''} onChange={e => setEditForm(f=>({...f,[key]:e.target.value}))}
+                        style={{ width:'100%', padding:'7px 10px', border:'1.5px solid #bfdbfe', borderRadius:6, fontSize:12, boxSizing:'border-box' }} />
+                    </div>
+                  ))}
+                </div>
+
+                {/* MESSAGE ADMIN */}
+                <h4 style={{ margin:'0 0 8px', fontSize:13, fontWeight:800, color:'#92400e' }}>📢 Mesaj Admin pou POS sa a</h4>
+                <textarea value={editForm.messageAdmin||''} onChange={e => setEditForm(f=>({...f,messageAdmin:e.target.value}))}
+                  placeholder="Mesaj ki ap parèt sou ekran ajan an..."
+                  rows={3}
+                  style={{ width:'100%', padding:'9px 12px', border:'1.5px solid #f59e0b', borderRadius:6, fontSize:13, resize:'vertical', boxSizing:'border-box', fontFamily:'inherit', marginBottom:16 }} />
+
+                {/* BOUTONS */}
+                <div style={{ display:'flex', gap:10 }}>
+                  <button onClick={() => setEditPos(null)}
+                    style={{ flex:1, padding:12, background:'#f3f4f6', border:'none', borderRadius:6, fontWeight:700, cursor:'pointer' }}>
+                    Anile
+                  </button>
+                  <button onClick={saveEditPos} disabled={savingEdit}
+                    style={{ flex:2, padding:12, background:savingEdit?'#ccc':'#1a73e8', color:'white', border:'none', borderRadius:6, fontWeight:700, cursor:savingEdit?'default':'pointer', fontSize:14 }}>
+                    {savingEdit ? 'Ap sove...' : '✅ Sove Chanjman'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

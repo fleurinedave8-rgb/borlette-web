@@ -21,6 +21,8 @@ export default function Limites() {
   const [saving,   setSaving]   = useState(false);
   const [msg,      setMsg]      = useState('');
   const [newBoule, setNewBoule] = useState({ tirage:'', boule:'', limite:'' });
+  const [editAgent, setEditAgent] = useState(null); // { id, field, value }
+  const [savingAgent, setSavingAgent] = useState(false);
 
   useEffect(() => { loadAll(); }, []);
 
@@ -84,6 +86,21 @@ export default function Limites() {
     border: `1.5px solid ${limits[key] ? '#1a73e8' : '#ddd'}`,
     borderRadius:8, fontSize:14, fontWeight:700, boxSizing:'border-box',
   });
+
+  // ── Sove limite ajan ──────────────────────────────────────
+  const saveAgentLimite = async () => {
+    if (!editAgent) return;
+    setSavingAgent(true);
+    try {
+      await api.put(`/api/admin/agents/${editAgent.id}/limite`, {
+        [editAgent.field]: editAgent.value
+      });
+      notify('✅ Limite ajan mete ajou!');
+      setEditAgent(null);
+      loadAll();
+    } catch (e) { alert('Erè: ' + (e?.response?.data?.message || e.message)); }
+    setSavingAgent(false);
+  };
 
   return (
     <Layout>
@@ -192,26 +209,94 @@ export default function Limites() {
             {/* ── TAB AGENT ── */}
             {tab === 'agent' && (
               <div style={{ overflowX:'auto' }}>
-                <p style={{ margin:'0 0 14px', fontSize:13, color:'#666' }}>
-                  💡 Limite pa ajan — chanje <strong>limiteGain</strong> dirèkteman nan paj Agents/POS.
+                <p style={{ margin:'0 0 14px', fontSize:13, color:'#16a34a', fontWeight:700 }}>
+                  ✏️ Klike sou valè yo pou modifye limite chak ajan dirèkteman.
                 </p>
                 <table className="data-table">
                   <thead>
-                    <tr>{['Ajan','Username','Limite Gain','Kredi','Aksyon'].map(h => <th key={h}>{h}</th>)}</tr>
+                    <tr>{['Ajan','Username','Limite Gain','Kredi Vant','% Komisyon','Aksyon'].map(h => <th key={h}>{h}</th>)}</tr>
                   </thead>
                   <tbody>
-                    {agents.length === 0
-                      ? <tr><td colSpan={5} style={{ padding:24, textAlign:'center', color:'#888' }}>Pa gen ajan</td></tr>
-                      : agents.map(a => (
-                        <tr key={a._id}>
+                    {agents.filter(a => a.role !== 'admin' && a.role !== 'superadmin').length === 0
+                      ? <tr><td colSpan={6} style={{ padding:24, textAlign:'center', color:'#888' }}>Pa gen ajan</td></tr>
+                      : agents.filter(a => a.role !== 'admin' && a.role !== 'superadmin').map(a => (
+                        <tr key={a._id || a.id}>
                           <td style={{ fontWeight:700 }}>{a.prenom} {a.nom}</td>
-                          <td style={{ fontFamily:'monospace', color:'#1a73e8' }}>{a.username}</td>
-                          <td style={{ fontWeight:700, color:'#f59e0b' }}>{a.limiteGain || 'Illimité'}</td>
-                          <td style={{ fontWeight:700, color:'#16a34a' }}>{a.credit || '0'}</td>
+                          <td style={{ fontFamily:'monospace', color:'#1a73e8', fontSize:12 }}>{a.username}</td>
+                          {/* LIMITE GAIN — editable inline */}
                           <td>
-                            <a href="/agents" style={{ color:'#1a73e8', fontSize:12, fontWeight:700, textDecoration:'none' }}>
+                            {editAgent?.id===(a._id||a.id) && editAgent.field==='limiteGain' ? (
+                              <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+                                <input autoFocus value={editAgent.value}
+                                  onChange={e => setEditAgent(ea => ({...ea, value: e.target.value}))}
+                                  onKeyDown={e => { if(e.key==='Enter') saveAgentLimite(); if(e.key==='Escape') setEditAgent(null); }}
+                                  style={{ width:90, padding:'4px 8px', border:'2px solid #f59e0b', borderRadius:6, fontWeight:800, fontSize:13 }} />
+                                <button onClick={saveAgentLimite} disabled={savingAgent}
+                                  style={{ background:'#16a34a', color:'white', border:'none', borderRadius:5, padding:'4px 8px', cursor:'pointer', fontSize:11, fontWeight:700 }}>
+                                  {savingAgent ? '...' : '✓'}
+                                </button>
+                                <button onClick={() => setEditAgent(null)}
+                                  style={{ background:'#dc2626', color:'white', border:'none', borderRadius:5, padding:'4px 8px', cursor:'pointer', fontSize:11 }}>✕</button>
+                              </div>
+                            ) : (
+                              <span onClick={() => setEditAgent({ id:a._id||a.id, field:'limiteGain', value:a.limiteGain||'Illimité' })}
+                                style={{ color:'#f59e0b', fontWeight:800, cursor:'pointer', borderBottom:'1px dashed #f59e0b', padding:'2px 4px' }}
+                                title="Klike pou modifye">
+                                {a.limiteGain || 'Illimité'} ✏️
+                              </span>
+                            )}
+                          </td>
+                          {/* KREDI — editable */}
+                          <td>
+                            {editAgent?.id===(a._id||a.id) && editAgent.field==='credit' ? (
+                              <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+                                <input autoFocus value={editAgent.value}
+                                  onChange={e => setEditAgent(ea => ({...ea, value: e.target.value}))}
+                                  onKeyDown={e => { if(e.key==='Enter') saveAgentLimite(); if(e.key==='Escape') setEditAgent(null); }}
+                                  style={{ width:90, padding:'4px 8px', border:'2px solid #16a34a', borderRadius:6, fontWeight:800, fontSize:13 }} />
+                                <button onClick={saveAgentLimite} disabled={savingAgent}
+                                  style={{ background:'#16a34a', color:'white', border:'none', borderRadius:5, padding:'4px 8px', cursor:'pointer', fontSize:11, fontWeight:700 }}>
+                                  {savingAgent ? '...' : '✓'}
+                                </button>
+                                <button onClick={() => setEditAgent(null)}
+                                  style={{ background:'#dc2626', color:'white', border:'none', borderRadius:5, padding:'4px 8px', cursor:'pointer', fontSize:11 }}>✕</button>
+                              </div>
+                            ) : (
+                              <span onClick={() => setEditAgent({ id:a._id||a.id, field:'credit', value:a.credit||'Illimité' })}
+                                style={{ color:'#16a34a', fontWeight:800, cursor:'pointer', borderBottom:'1px dashed #16a34a', padding:'2px 4px' }}
+                                title="Klike pou modifye">
+                                {a.credit || 'Illimité'} ✏️
+                              </span>
+                            )}
+                          </td>
+                          {/* % KOMISYON */}
+                          <td>
+                            {editAgent?.id===(a._id||a.id) && editAgent.field==='agentPct' ? (
+                              <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+                                <input autoFocus type="number" min="0" max="100" value={editAgent.value}
+                                  onChange={e => setEditAgent(ea => ({...ea, value: e.target.value}))}
+                                  onKeyDown={e => { if(e.key==='Enter') saveAgentLimite(); if(e.key==='Escape') setEditAgent(null); }}
+                                  style={{ width:70, padding:'4px 8px', border:'2px solid #7c3aed', borderRadius:6, fontWeight:800, fontSize:13 }} />
+                                <button onClick={saveAgentLimite} disabled={savingAgent}
+                                  style={{ background:'#16a34a', color:'white', border:'none', borderRadius:5, padding:'4px 8px', cursor:'pointer', fontSize:11, fontWeight:700 }}>
+                                  {savingAgent ? '...' : '✓'}
+                                </button>
+                                <button onClick={() => setEditAgent(null)}
+                                  style={{ background:'#dc2626', color:'white', border:'none', borderRadius:5, padding:'4px 8px', cursor:'pointer', fontSize:11 }}>✕</button>
+                              </div>
+                            ) : (
+                              <span onClick={() => setEditAgent({ id:a._id||a.id, field:'agentPct', value:String(a.agentPct||10) })}
+                                style={{ color:'#7c3aed', fontWeight:800, cursor:'pointer', borderBottom:'1px dashed #7c3aed', padding:'2px 4px' }}
+                                title="Klike pou modifye">
+                                {a.agentPct||10}% ✏️
+                              </span>
+                            )}
+                          </td>
+                          <td>
+                            <button onClick={() => setEditAgent({ id:a._id||a.id, field:'limiteGain', value:a.limiteGain||'Illimité' })}
+                              style={{ background:'#f3f4f6', border:'1px solid #ddd', borderRadius:5, padding:'4px 10px', cursor:'pointer', fontWeight:700, fontSize:11 }}>
                               ✏️ Modifye
-                            </a>
+                            </button>
                           </td>
                         </tr>
                       ))
