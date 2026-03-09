@@ -39,6 +39,7 @@ function StatCard({ icon, label, value, sub, color, onClick }) {
 
 export default function Dashboard() {
   const router = useRouter();
+  const [mounted,    setMounted]    = useState(false);
   const [stats,      setStats]      = useState(null);
   const [resultats,  setResultats]  = useState({});
   const [rapport,    setRapport]    = useState(null);
@@ -60,6 +61,7 @@ export default function Dashboard() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     if (!isLoggedIn()) { router.push('/'); return; }
     loadAll();
     const iv = setInterval(loadAll, 3 * 60 * 1000);
@@ -171,6 +173,10 @@ export default function Dashboard() {
     { key:'agents', label:'👥 Ajan' },
     { key:'tirages', label:'📋 Tiraj' },
   ];
+
+  // Anpeche SSR flash — tann client mount
+  if (!mounted) return null;
+  if (!isLoggedIn()) return null;
 
   return (
     <Layout>
