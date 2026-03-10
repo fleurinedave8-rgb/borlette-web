@@ -50,6 +50,8 @@ export default function Dashboard() {
   const [liveStats,   setLiveStats]   = useState({ newFiches:0, jwe:0, pete:0, totalLive:0 });
   const [transactions, setTransactions] = useState([]);
   const [wsLive,       setWsLive]       = useState(false);
+  const [showAgentModal, setShowAgentModal] = useState(false);
+  const [agentModalType, setAgentModalType] = useState('actif'); // 'actif' | 'inactif'
 
   // Modal antre rezilta
   const [showModal,  setShowModal]  = useState(false);
@@ -178,6 +180,10 @@ export default function Dashboard() {
   if (!mounted) return null;
   if (!isLoggedIn()) return null;
 
+  const agentList = agentModalType === 'actif'
+    ? (stats?.agentsActifList || [])
+    : (stats?.agentsInactifList || []);
+
   return (
     <Layout>
       <div>
@@ -281,8 +287,10 @@ export default function Dashboard() {
             <div style={{ marginBottom:20, marginTop:16 }}>
               <div style={{ fontSize:11, fontWeight:800, color:'#888', marginBottom:10, textTransform:'uppercase', letterSpacing:1 }}>📊 Kimilatif</div>
               <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
-                <StatCard icon="👥" label="Ajan Aktif" value={stats?.totalAgents||0} color="#7c3aed"
-                  onClick={() => router.push('/agents')} />
+                <StatCard icon="✅" label="Ajan Aktif" value={stats?.agentsActif||stats?.totalAgents||0} color="#16a34a"
+                  sub="Klike pou wè lis" onClick={() => { setAgentModalType('actif'); setShowAgentModal(true); }} />
+                <StatCard icon="❌" label="Ajan Inaktif" value={stats?.agentsInactif||0} color="#dc2626"
+                  sub="Klike pou wè lis" onClick={() => { setAgentModalType('inactif'); setShowAgentModal(true); }} />
                 <StatCard icon="🎫" label="Total Fiches" value={stats?.totalFiches||0} color="#1a73e8"
                   sub={`Semèn: ${stats?.fichesSemaine||0}`} onClick={() => router.push('/rapport/fiches-vendu')} />
                 <StatCard icon="💵" label="Total Vant" value={`${fmt(stats?.venteTotal)} G`} color="#16a34a"
@@ -579,6 +587,101 @@ export default function Dashboard() {
         )}
 
       </div>
+
+      {/* ══ MODAL AJAN ══ */}
+      {showAgentModal && (
+        <div onClick={() => setShowAgentModal(false)} style={{
+          position:'fixed', inset:0, background:'rgba(0,0,0,.55)',
+          zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center', padding:16,
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background:'white', borderRadius:16, width:'100%', maxWidth:520,
+            maxHeight:'80vh', display:'flex', flexDirection:'column',
+            boxShadow:'0 20px 60px rgba(0,0,0,.3)', overflow:'hidden',
+          }}>
+            {/* Header modal */}
+            <div style={{
+              padding:'16px 20px', display:'flex', alignItems:'center', justifyContent:'space-between',
+              borderBottom:'1px solid #e5e7eb',
+              background: agentModalType==='actif' ? 'linear-gradient(135deg,#dcfce7,#f0fdf4)' : 'linear-gradient(135deg,#fef2f2,#fff5f5)',
+            }}>
+              <div>
+                <div style={{ fontWeight:900, fontSize:16, color:'#111' }}>
+                  {agentModalType==='actif' ? '✅ Ajan Aktif' : '❌ Ajan Inaktif'}
+                </div>
+                <div style={{ fontSize:12, color:'#666', marginTop:2 }}>
+                  {agentList.length} ajan {agentModalType==='actif' ? 'k ap travay' : 'dezaktive'}
+                </div>
+              </div>
+              <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                <button onClick={() => { setAgentModalType(agentModalType==='actif'?'inactif':'actif'); }}
+                  style={{ background:'#f1f5f9', border:'1px solid #cbd5e1', borderRadius:8, padding:'6px 14px', fontSize:12, fontWeight:700, cursor:'pointer', color:'#374151' }}>
+                  {agentModalType==='actif' ? '❌ Wè Inaktif' : '✅ Wè Aktif'}
+                </button>
+                <button onClick={() => setShowAgentModal(false)}
+                  style={{ background:'#f1f5f9', border:'none', borderRadius:8, width:32, height:32, cursor:'pointer', fontSize:16, fontWeight:900, color:'#374151' }}>×</button>
+              </div>
+            </div>
+
+            {/* Lis ajan */}
+            <div style={{ flex:1, overflowY:'auto', padding:'8px 0' }}>
+              {agentList.length === 0 ? (
+                <div style={{ textAlign:'center', padding:40, color:'#aaa' }}>
+                  <div style={{ fontSize:40, marginBottom:8 }}>
+                    {agentModalType==='actif' ? '😴' : '🎉'}
+                  </div>
+                  <div style={{ fontWeight:700 }}>
+                    {agentModalType==='actif' ? 'Pa gen ajan aktif' : 'Tout ajan yo aktif!'}
+                  </div>
+                </div>
+              ) : agentList.map((a, i) => (
+                <div key={a._id||i} style={{
+                  display:'flex', alignItems:'center', gap:12,
+                  padding:'12px 20px', borderBottom:'1px solid #f1f5f9',
+                  transition:'background .1s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background='#f8fafc'}
+                onMouseLeave={e => e.currentTarget.style.background='transparent'}
+                >
+                  <div style={{
+                    width:40, height:40, borderRadius:'50%', flexShrink:0,
+                    background: agentModalType==='actif' ? 'linear-gradient(135deg,#16a34a,#22c55e)' : 'linear-gradient(135deg,#dc2626,#ef4444)',
+                    display:'flex', alignItems:'center', justifyContent:'center',
+                    color:'white', fontWeight:900, fontSize:15,
+                  }}>
+                    {(a.prenom||'?')[0].toUpperCase()}
+                  </div>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontWeight:800, fontSize:14, color:'#111' }}>
+                      {a.prenom} {a.nom}
+                    </div>
+                    <div style={{ fontSize:12, color:'#666', marginTop:1 }}>
+                      @{a.username} {a.telephone ? `· ${a.telephone}` : ''}
+                    </div>
+                  </div>
+                  <div style={{
+                    padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:800,
+                    background: agentModalType==='actif' ? '#dcfce7' : '#fee2e2',
+                    color: agentModalType==='actif' ? '#16a34a' : '#dc2626',
+                  }}>
+                    {agentModalType==='actif' ? 'AKTIF' : 'INAKTIF'}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding:'12px 20px', borderTop:'1px solid #e5e7eb', display:'flex', justifyContent:'space-between', alignItems:'center', background:'#f8fafc' }}>
+              <span style={{ fontSize:12, color:'#666' }}>{agentList.length} ajan total</span>
+              <button onClick={() => { setShowAgentModal(false); router.push('/agents'); }}
+                style={{ background:'#1a73e8', color:'white', border:'none', borderRadius:8, padding:'8px 18px', fontWeight:700, fontSize:13, cursor:'pointer' }}>
+                ⚙️ Jere Ajan yo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </Layout>
   );
 }

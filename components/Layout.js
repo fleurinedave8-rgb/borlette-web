@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { getUser, clearAuth } from '../utils/auth';
 
-const SW = 256;
+const SW = 268;
 
 const NAV = [
   { href:'/dashboard',  icon:'🏠', label:'Tableau de bord' },
@@ -51,12 +51,11 @@ export default function Layout({ children }) {
   const [user,      setUser]      = useState(null);
 
   useEffect(() => {
-    const isMob = window.innerWidth < 768;
+    const isMob = window.innerWidth < 900;
     setMobile(isMob);
     setSideOpen(!isMob);
     setUser(getUser());
 
-    // Ouvri sous-menu paj aktif la
     const m = {};
     NAV.forEach(item => {
       if (item.sub?.some(s => router.pathname.startsWith(s.href)))
@@ -66,7 +65,7 @@ export default function Layout({ children }) {
     setReady(true);
 
     const onResize = () => {
-      const now = window.innerWidth < 768;
+      const now = window.innerWidth < 900;
       setMobile(now);
       if (now) setSideOpen(false);
     };
@@ -78,30 +77,28 @@ export default function Layout({ children }) {
   const toggle      = (label) => setOpenMenus(p => ({ ...p, [label]: !p[label] }));
   const closeMobile = () => { if (mobile) setSideOpen(false); };
 
+  // Skeleton pandan chajman — menm wotè ak header pou evite espas blan
   if (!ready) return (
-    <div style={{ minHeight:'100vh', background:'#f0f2f5' }}>
-      <div style={{ height:52, background:'white', boxShadow:'0 1px 4px rgba(0,0,0,.1)' }} />
-      <div style={{ padding:16 }}>{children}</div>
+    <div style={{ minHeight:'100vh', background:'#f0f2f5', display:'flex', flexDirection:'column' }}>
+      <div style={{ height:56, background:'#1e1e1e', boxShadow:'0 2px 8px rgba(0,0,0,.3)', flexShrink:0 }} />
+      <div style={{ flex:1, padding:20, maxWidth:1200, width:'100%', margin:'0 auto', boxSizing:'border-box' }}>{children}</div>
     </div>
   );
 
-  const sideVisible = sideOpen;
-
   return (
-    // Grid root — tout la paj nan yon sèl grid
     <div style={{
       display: 'grid',
-      gridTemplateColumns: !mobile && sideVisible ? `${SW}px 1fr` : '1fr',
-      gridTemplateRows: '52px 1fr',
+      gridTemplateColumns: !mobile && sideOpen ? `${SW}px 1fr` : '1fr',
+      gridTemplateRows: '56px 1fr',
       minHeight: '100vh',
       background: '#f0f2f5',
     }}>
 
-      {/* ── Overlay mobile ── */}
-      {mobile && sideVisible && (
+      {/* Overlay mobile */}
+      {mobile && sideOpen && (
         <div onClick={() => setSideOpen(false)} style={{
           position:'fixed', inset:0,
-          background:'rgba(0,0,0,.55)',
+          background:'rgba(0,0,0,.6)',
           zIndex:1100,
         }} />
       )}
@@ -110,49 +107,64 @@ export default function Layout({ children }) {
       <nav style={{
         gridRow: '1 / 3',
         gridColumn: '1',
-        background: '#1e1e1e',
+        background: 'linear-gradient(180deg, #111827 0%, #1e1e2e 100%)',
         display: 'flex',
         flexDirection: 'column',
         overflowY: 'auto',
         overflowX: 'hidden',
-        // Mobile: position fixed + slide
+        borderRight: '1px solid #2a2a3a',
         ...(mobile ? {
           position: 'fixed',
           top: 0, left: 0,
           width: SW,
           height: '100vh',
           zIndex: 1200,
-          transform: sideVisible ? 'translateX(0)' : `translateX(-${SW}px)`,
-          transition: 'transform .25s ease',
+          transform: sideOpen ? 'translateX(0)' : `translateX(-${SW}px)`,
+          transition: 'transform .25s cubic-bezier(.4,0,.2,1)',
         } : {
-          // Desktop: dans le grid, disparait si fermé
-          display: sideVisible ? 'flex' : 'none',
+          display: sideOpen ? 'flex' : 'none',
           position: 'sticky',
           top: 0,
           height: '100vh',
         }),
       }}>
 
-        {/* Logo */}
-        <div style={{ padding:'16px 14px 12px', textAlign:'center', borderBottom:'1px solid #2a2a2a', flexShrink:0 }}>
+        {/* ─ Logo + Branding ─ */}
+        <div style={{
+          padding:'20px 16px 16px',
+          textAlign:'center',
+          borderBottom:'1px solid rgba(255,255,255,.08)',
+          flexShrink:0,
+          background:'rgba(0,0,0,.2)',
+        }}>
           <div style={{
-            width:50, height:50, borderRadius:'50%',
-            background:'white', margin:'0 auto 8px',
+            width:56, height:56, borderRadius:'50%',
+            background:'linear-gradient(135deg, #f59e0b, #d97706)',
+            margin:'0 auto 10px',
             display:'flex', alignItems:'center', justifyContent:'center',
-            fontSize:20, border:'2px solid #f59e0b',
+            fontSize:24, boxShadow:'0 4px 12px rgba(245,158,11,.4)',
           }}>🔑</div>
-          <div style={{ color:'white', fontWeight:800, fontSize:11, letterSpacing:.5 }}>
-            LA-PROBITE-BORLETTE
+          <div style={{ color:'white', fontWeight:900, fontSize:13, letterSpacing:.8, lineHeight:1.3 }}>
+            LA-PROBITE
+          </div>
+          <div style={{ color:'#f59e0b', fontWeight:800, fontSize:11, letterSpacing:1.5, marginTop:1 }}>
+            BORLETTE
           </div>
           {user && (
-            <div style={{ color:'#f59e0b', fontSize:11, marginTop:2 }}>
-              {user.prenom} {user.nom}
+            <div style={{
+              marginTop:8, background:'rgba(245,158,11,.12)',
+              border:'1px solid rgba(245,158,11,.25)',
+              borderRadius:20, padding:'4px 12px', display:'inline-block',
+            }}>
+              <span style={{ color:'#fbbf24', fontSize:11, fontWeight:700 }}>
+                👤 {user.prenom} {user.nom}
+              </span>
             </div>
           )}
         </div>
 
-        {/* Items nav */}
-        <div style={{ flex:1, paddingBottom:12 }}>
+        {/* ─ Nav items ─ */}
+        <div style={{ flex:1, paddingTop:8, paddingBottom:16 }}>
           {NAV.map((item, i) => {
 
             if (item.sub) {
@@ -162,35 +174,45 @@ export default function Layout({ children }) {
                 <div key={i}>
                   <div onClick={() => toggle(item.label)} style={{
                     display:'flex', alignItems:'center', justifyContent:'space-between',
-                    padding:'10px 14px', cursor:'pointer',
-                    color: isActive ? '#fff' : '#ccc',
-                    background: isActive ? '#2a2a2a' : 'transparent',
+                    padding:'11px 16px', cursor:'pointer',
+                    color: isActive ? '#fff' : '#94a3b8',
+                    background: isActive ? 'rgba(245,158,11,.1)' : 'transparent',
                     userSelect:'none',
-                  }}>
-                    <span style={{ display:'flex', alignItems:'center', gap:9 }}>
-                      <span style={{ color:'#f59e0b', width:18, textAlign:'center', fontSize:15 }}>{item.icon}</span>
-                      <span style={{ fontSize:13 }}>{item.label}</span>
+                    transition:'all .15s',
+                    borderLeft: isActive ? '3px solid #f59e0b' : '3px solid transparent',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,.05)'}
+                  onMouseLeave={e => e.currentTarget.style.background=isActive?'rgba(245,158,11,.1)':'transparent'}
+                  >
+                    <span style={{ display:'flex', alignItems:'center', gap:10 }}>
+                      <span style={{ width:20, textAlign:'center', fontSize:16 }}>{item.icon}</span>
+                      <span style={{ fontSize:14, fontWeight:600 }}>{item.label}</span>
                     </span>
-                    <span style={{ color:'#f59e0b', fontSize:11 }}>{isOpen ? '▾' : '▸'}</span>
+                    <span style={{ color:'#f59e0b', fontSize:12, transition:'transform .2s', display:'inline-block', transform: isOpen?'rotate(90deg)':'rotate(0deg)' }}>▶</span>
                   </div>
 
-                  {isOpen && item.sub.map((sub, j) => {
-                    const act = router.pathname === sub.href;
-                    return (
-                      <Link key={j} href={sub.href} onClick={closeMobile} style={{
-                        display:'flex', alignItems:'center', gap:8,
-                        padding:'9px 14px 9px 40px',
-                        color: act ? '#fff' : '#bbb',
-                        background: act ? '#2e2e2e' : '#181818',
-                        textDecoration:'none',
-                        borderLeft: act ? '3px solid #f59e0b' : '3px solid transparent',
-                        fontSize:13,
-                      }}>
-                        <span style={{ color:'#f59e0b', fontSize:9 }}>▶</span>
-                        <span>{sub.label}</span>
-                      </Link>
-                    );
-                  })}
+                  {isOpen && (
+                    <div style={{ background:'rgba(0,0,0,.2)', borderLeft:'1px solid rgba(255,255,255,.05)', marginLeft:16 }}>
+                      {item.sub.map((sub, j) => {
+                        const act = router.pathname === sub.href;
+                        return (
+                          <Link key={j} href={sub.href} onClick={closeMobile} style={{
+                            display:'flex', alignItems:'center', gap:8,
+                            padding:'9px 16px 9px 20px',
+                            color: act ? '#fbbf24' : '#94a3b8',
+                            background: act ? 'rgba(245,158,11,.12)' : 'transparent',
+                            textDecoration:'none',
+                            borderLeft: act ? '2px solid #f59e0b' : '2px solid transparent',
+                            fontSize:13, fontWeight: act ? 700 : 500,
+                            transition:'all .15s',
+                          }}>
+                            <span style={{ color: act ? '#f59e0b' : '#475569', fontSize:8 }}>◆</span>
+                            <span>{sub.label}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               );
             }
@@ -198,15 +220,16 @@ export default function Layout({ children }) {
             const act = router.pathname === item.href;
             return (
               <Link key={i} href={item.href} onClick={closeMobile} style={{
-                display:'flex', alignItems:'center', gap:9,
-                padding:'10px 14px',
-                color: act ? '#fff' : '#ccc',
-                background: act ? '#2e2e2e' : 'transparent',
+                display:'flex', alignItems:'center', gap:10,
+                padding:'11px 16px',
+                color: act ? '#fff' : '#94a3b8',
+                background: act ? 'rgba(245,158,11,.12)' : 'transparent',
                 textDecoration:'none',
                 borderLeft: act ? '3px solid #f59e0b' : '3px solid transparent',
-                fontSize:13,
+                fontSize:14, fontWeight: act ? 700 : 500,
+                transition:'all .15s',
               }}>
-                <span style={{ color:'#f59e0b', width:18, textAlign:'center', fontSize:15 }}>{item.icon}</span>
+                <span style={{ width:20, textAlign:'center', fontSize:16 }}>{item.icon}</span>
                 <span>{item.label}</span>
               </Link>
             );
@@ -214,31 +237,36 @@ export default function Layout({ children }) {
 
           {/* Dekonekte */}
           <div onClick={logout} style={{
-            display:'flex', alignItems:'center', gap:9,
-            padding:'10px 14px', cursor:'pointer',
-            color:'#ef4444', borderTop:'1px solid #2a2a2a',
-            marginTop:8, fontSize:13,
+            display:'flex', alignItems:'center', gap:10,
+            padding:'11px 16px', cursor:'pointer',
+            color:'#f87171',
+            borderTop:'1px solid rgba(255,255,255,.06)',
+            marginTop:12, fontSize:14, fontWeight:600,
             borderLeft:'3px solid transparent',
-          }}>
-            <span style={{ width:18, textAlign:'center' }}>⏻</span>
+            transition:'all .15s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background='rgba(239,68,68,.1)'; e.currentTarget.style.borderLeftColor='#ef4444'; }}
+          onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.borderLeftColor='transparent'; }}
+          >
+            <span style={{ width:20, textAlign:'center' }}>⏻</span>
             <span>Dekonekte</span>
           </div>
 
           {/* NEXTSTEPDIGITAL */}
-          <div style={{ padding:'12px 14px', borderTop:'1px solid #1a1a1a', marginTop:4, textAlign:'center' }}>
+          <div style={{ padding:'14px 16px', borderTop:'1px solid rgba(255,255,255,.06)', marginTop:8, textAlign:'center' }}>
             <div style={{
-              display:'inline-flex', alignItems:'center', gap:6,
-              background:'linear-gradient(135deg, #1a1a2e, #16213e)',
-              border:'1px solid #0f3460', borderRadius:8, padding:'6px 12px',
+              display:'inline-flex', alignItems:'center', gap:7,
+              background:'linear-gradient(135deg, #0f172a, #1e293b)',
+              border:'1px solid rgba(59,130,246,.3)', borderRadius:10, padding:'7px 14px',
             }}>
-              <span style={{ fontSize:10 }}>⚡</span>
+              <span style={{ fontSize:12 }}>⚡</span>
               <div>
                 <div style={{
-                  fontSize:9, fontWeight:900, letterSpacing:1,
+                  fontSize:10, fontWeight:900, letterSpacing:1.5,
                   background:'linear-gradient(90deg, #f59e0b, #3b82f6)',
                   WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
                 }}>NEXTSTEPDIGITAL</div>
-                <div style={{ fontSize:8, color:'#555' }}>+509 41 76 24 10</div>
+                <div style={{ fontSize:9, color:'#475569', marginTop:1 }}>+509 41 76 24 10</div>
               </div>
             </div>
           </div>
@@ -248,56 +276,67 @@ export default function Layout({ children }) {
       {/* ════ HEADER ════ */}
       <header style={{
         gridRow: '1',
-        gridColumn: !mobile && sideVisible ? '2' : '1',
+        gridColumn: !mobile && sideOpen ? '2' : '1',
         background: 'white',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '0 16px',
-        boxShadow: '0 1px 4px rgba(0,0,0,.1)',
+        padding: '0 20px',
+        boxShadow: '0 2px 8px rgba(0,0,0,.08)',
+        borderBottom: '1px solid #e5e7eb',
         position: 'sticky',
         top: 0,
         zIndex: 100,
-        height: 52,
-        // Mobile: full width fixed
+        height: 56,
         ...(mobile ? {
           position: 'fixed',
           top: 0, left: 0, right: 0,
         } : {}),
       }}>
         <button onClick={() => setSideOpen(o => !o)}
-          style={{ background:'none', border:'none', fontSize:22, cursor:'pointer', color:'#f59e0b', padding:'2px 8px', lineHeight:1 }}>
+          style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'#374151', padding:'4px 8px', lineHeight:1, borderRadius:6 }}>
           ☰
         </button>
 
-        <span style={{ fontWeight:800, fontSize:14, color:'#1a73e8', letterSpacing:.4 }}>
-          LA-PROBITE-BORLETTE
-        </span>
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          <span style={{ fontSize:18 }}>🔑</span>
+          <span style={{ fontWeight:900, fontSize:15, color:'#111827', letterSpacing:.5 }}>
+            LA-PROBITE-BORLETTE
+          </span>
+        </div>
 
-        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
           {user && !mobile && (
-            <span style={{ fontSize:12, color:'#555' }}>{user.prenom} {user.nom}</span>
+            <div style={{ display:'flex', alignItems:'center', gap:6, background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:20, padding:'4px 12px' }}>
+              <span style={{ fontSize:13 }}>👤</span>
+              <span style={{ fontSize:12, color:'#374151', fontWeight:600 }}>{user.prenom} {user.nom}</span>
+            </div>
           )}
           <button onClick={logout} style={{
-            background:'none', border:'2px solid #dc2626', borderRadius:'50%',
-            width:30, height:30, cursor:'pointer', fontSize:13, color:'#dc2626',
-            display:'flex', alignItems:'center', justifyContent:'center',
-          }}>⏻</button>
+            background:'#fef2f2', border:'1.5px solid #fca5a5', borderRadius:8,
+            padding:'6px 12px', cursor:'pointer', fontSize:12, color:'#dc2626',
+            fontWeight:700, display:'flex', alignItems:'center', gap:4,
+          }}>
+            <span>⏻</span>
+            {!mobile && <span>Konekte</span>}
+          </button>
         </div>
       </header>
 
       {/* ════ CONTENU ════ */}
       <main style={{
         gridRow: '2',
-        gridColumn: !mobile && sideVisible ? '2' : '1',
-        padding: 16,
-        // Mobile: ajoute marge pou header fixed
-        ...(mobile ? { marginTop: 52 } : {}),
-        minHeight: 'calc(100vh - 52px)',
+        gridColumn: !mobile && sideOpen ? '2' : '1',
+        padding: mobile ? '16px 12px' : '20px 24px',
+        ...(mobile ? { marginTop: 56 } : {}),
+        minHeight: 'calc(100vh - 56px)',
         overflowX: 'hidden',
         boxSizing: 'border-box',
+        width: '100%',
       }}>
-        {children}
+        <div style={{ maxWidth: 1280, margin: '0 auto', width: '100%' }}>
+          {children}
+        </div>
       </main>
 
     </div>

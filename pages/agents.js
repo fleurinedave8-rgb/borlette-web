@@ -24,7 +24,7 @@ export default function AgentsPage() {
     agentPct:0, supPct:0, credit:'Libre', balanceGain:'Libre',
     prime:'60|20|10', superviseurId:'',
     // Tete fich pou enpresyon
-    tete1:'', tete2:'', tete3:'', tete4:'Fich sa valid pou 90 jou', messageAdmin:'',
+    tete1:'', tete2:'', tete3:'', tete4:'Fich sa valid pou 90 jou', messageAdmin:'', logo:'',
   });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -80,6 +80,7 @@ export default function AgentsPage() {
         credit: form.credit,
         agentUsername: form.identifiant,
         messageAdmin: form.messageAdmin || '',
+        logo: form.logo || '',
         tete: {
           ligne1: form.tete1 || `${form.prenom} ${form.nom}`,
           ligne2: form.tete2 || form.zone || '',
@@ -562,6 +563,33 @@ export default function AgentsPage() {
               </div>
 
               {/* TETE FICH — Info enpresyon pou chak POS */}
+              {/* LOGO POS */}
+              <div style={{ background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:8, padding:12, marginTop:14 }}>
+                <h4 style={{ margin:'0 0 8px', fontSize:13, fontWeight:800, color:'#0f172a' }}>🖼️ Logo POS</h4>
+                <p style={{ margin:'0 0 10px', fontSize:11, color:'#64748b' }}>
+                  Logo a ap soti nan tèt ticket la. Mete lyen URL imaj (PNG/JPG rekòmande).
+                </p>
+                <div style={{ display:'flex', gap:10, alignItems:'flex-start' }}>
+                  <div style={{ flex:1 }}>
+                    <input
+                      type="url"
+                      value={form.logo || ''}
+                      onChange={e => setForm(f => ({ ...f, logo: e.target.value }))}
+                      placeholder="https://exemple.com/logo-pos.png"
+                      style={{ width:'100%', padding:'9px 12px', border:'1.5px solid #cbd5e1', borderRadius:6, fontSize:13, boxSizing:'border-box' }}
+                    />
+                  </div>
+                  {form.logo && (
+                    <img
+                      src={form.logo}
+                      alt="Aperçu logo"
+                      onError={e => e.target.style.display='none'}
+                      style={{ width:56, height:56, objectFit:'contain', borderRadius:8, border:'1.5px solid #e2e8f0', background:'white', padding:4, flexShrink:0 }}
+                    />
+                  )}
+                </div>
+              </div>
+
               <div style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:8, padding:12, marginTop:14 }}>
                 <h4 style={{ margin:'0 0 10px', fontSize:13, fontWeight:800, color:'#1e40af' }}>🖨️ Tete Fich (Enpresyon)</h4>
                 <p style={{ margin:'0 0 10px', fontSize:11, color:'#3b82f6' }}>
