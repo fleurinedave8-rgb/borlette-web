@@ -6,7 +6,8 @@ import { getUser, clearAuth } from '../utils/auth';
 const SW = 268;
 
 const NAV = [
-  { href:'/dashboard',  icon:'🏠', label:'Tableau de bord' },
+  { href:'/dashboard',        icon:'🏠', label:'Tableau de bord' },
+  { href:'/dashboard/grafik', icon:'📊', label:'Grafik & Analiz' },
   { href:'/mon-compte', icon:'🏛', label:'Mon compte' },
   { href:'/paiement',   icon:'💳', label:'Paiement online' },
   { href:'/succursal',  icon:'🏛', label:'Succursal' },
@@ -17,6 +18,7 @@ const NAV = [
     { href:'/configurations/primes',          label:'Primes' },
     { href:'/configurations/tete-fiche',      label:'Tête Fiche' },
     { href:'/configurations/utilisateurs',    label:'Utilisateurs' },
+    { href:'/configurations/licence-pos',     label:'🔑 Lisans POS' },
   ]},
   { label:'Surveillance', icon:'🖥', sub:[
     { href:'/surveillance/statistiques',         label:'Statistiques' },
@@ -77,13 +79,7 @@ export default function Layout({ children }) {
   const toggle      = (label) => setOpenMenus(p => ({ ...p, [label]: !p[label] }));
   const closeMobile = () => { if (mobile) setSideOpen(false); };
 
-  // Skeleton pandan chajman — menm wotè ak header pou evite espas blan
-  if (!ready) return (
-    <div style={{ minHeight:'100vh', background:'#f0f2f5', display:'flex', flexDirection:'column' }}>
-      <div style={{ height:56, background:'#1e1e1e', boxShadow:'0 2px 8px rgba(0,0,0,.3)', flexShrink:0 }} />
-      <div style={{ flex:1, padding:20, maxWidth:1200, width:'100%', margin:'0 auto', boxSizing:'border-box' }}>{children}</div>
-    </div>
-  );
+  // Pa retounen null pou evite flash — itilize ready pou kache UI sèlman
 
   return (
     <div style={{
@@ -92,6 +88,7 @@ export default function Layout({ children }) {
       gridTemplateRows: '56px 1fr',
       minHeight: '100vh',
       background: '#f0f2f5',
+      alignItems: 'start',
     }}>
 
       {/* Overlay mobile */}
@@ -107,6 +104,7 @@ export default function Layout({ children }) {
       <nav style={{
         gridRow: '1 / 3',
         gridColumn: '1',
+        visibility: ready ? 'visible' : 'hidden',
         background: 'linear-gradient(180deg, #111827 0%, #1e1e2e 100%)',
         display: 'flex',
         flexDirection: 'column',
@@ -277,6 +275,7 @@ export default function Layout({ children }) {
       <header style={{
         gridRow: '1',
         gridColumn: !mobile && sideOpen ? '2' : '1',
+        visibility: ready ? 'visible' : 'hidden',
         background: 'white',
         display: 'flex',
         alignItems: 'center',
@@ -288,10 +287,16 @@ export default function Layout({ children }) {
         top: 0,
         zIndex: 100,
         height: 56,
+        // Mobile: fixed pou roulan smooth
+        // Desktop: sticky nan grid — pa gen vid
         ...(mobile ? {
           position: 'fixed',
           top: 0, left: 0, right: 0,
-        } : {}),
+          width: '100%',
+        } : {
+          position: 'sticky',
+          top: 0,
+        }),
       }}>
         <button onClick={() => setSideOpen(o => !o)}
           style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'#374151', padding:'4px 8px', lineHeight:1, borderRadius:6 }}>
@@ -328,11 +333,12 @@ export default function Layout({ children }) {
         gridRow: '2',
         gridColumn: !mobile && sideOpen ? '2' : '1',
         padding: mobile ? '16px 12px' : '20px 24px',
-        ...(mobile ? { marginTop: 56 } : {}),
-        minHeight: 'calc(100vh - 56px)',
+        marginTop: mobile ? 56 : 0,
+        minHeight: mobile ? 'calc(100vh - 56px)' : 'calc(100vh - 56px)',
         overflowX: 'hidden',
         boxSizing: 'border-box',
         width: '100%',
+        alignSelf: 'start',
       }}>
         <div style={{ maxWidth: 1280, margin: '0 auto', width: '100%' }}>
           {children}
