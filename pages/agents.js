@@ -70,7 +70,7 @@ function LogoUpload({ value, onChange, label='🖼️ Logo POS' }) {
         </button>
       )}
       <input ref={ref} type="file" accept="image/*"
-        capture="environment"
+        
         style={{ display:'none' }} onChange={handleFile} />
     </div>
   );

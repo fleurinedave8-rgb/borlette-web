@@ -38,6 +38,7 @@ const NAV = [
     { href:'/rapport/fiches-gagnant',    label:'Fiches gagnant' },
     { href:'/rapport/fiches-elimine',    label:'Fiches éliminé' },
   ]},
+  { href:'/kontabilite', icon:'📒', label:'Kontabilite' },
   { href:'/doleances', icon:'🗣️', label:'Doléances' },
   { href:'/tutoriel',  icon:'ℹ️', label:'Tutoriel' },
 ];
