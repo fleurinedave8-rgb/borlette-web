@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import Layout from '../../components/Layout';
 import api from '../../utils/api';
 
@@ -7,6 +7,31 @@ const TIRAGES = ['Tout','Georgia-Matin','Georgia-Soir','Florida matin','Florida 
   'Maryland midi','Maryland soir','Tennessee matin','Tennessee soir'];
 
 const TYPE_LABELS = { P0:'Borlette', P1:'Loto3-P1', P2:'Loto3-P2', P3:'Loto3-P3', MAR:'Mariage', L4:'Loto 4' };
+const TYPE_COLORS = { P0:'#16a34a', P1:'#1a73e8', P2:'#7c3aed', P3:'#f59e0b', MAR:'#dc2626', L4:'#0891b2' };
+
+function fmtDate(d) {
+  if (!d) return '—';
+  const dt = new Date(d);
+  if (isNaN(dt)) return d;
+  const p = n => String(n).padStart(2,'0');
+  return `${p(dt.getDate())}/${p(dt.getMonth()+1)}/${dt.getFullYear()} ${p(dt.getHours())}:${p(dt.getMinutes())}`;
+}
+
+function Statut({ s }) {
+  const cfg = s === 'gagnant'
+    ? { bg:'#fef9c3', color:'#854d0e', label:'🏆 JWE' }
+    : s === 'elimine'
+    ? { bg:'#fee2e2', color:'#dc2626', label:'❌ Elimine' }
+    : s === 'bloke'
+    ? { bg:'#fef3c7', color:'#d97706', label:'🔒 Bloke' }
+    : { bg:'#f1f5f9', color:'#64748b', label:'💨 Pete' };
+  return (
+    <span style={{ background:cfg.bg, color:cfg.color, borderRadius:20,
+      padding:'3px 10px', fontWeight:800, fontSize:11, whiteSpace:'nowrap' }}>
+      {cfg.label}
+    </span>
+  );
+}
 
 export default function FichesVendu() {
   const today = new Date().toISOString().split('T')[0];
@@ -17,15 +42,17 @@ export default function FichesVendu() {
   const [loading, setLoading] = useState(false);
   const [search,  setSearch]  = useState('');
   const [page,    setPage]    = useState(0);
-  const [groupBy, setGroupBy] = useState('fiche');
-  const [selFich, setSelFich] = useState(null);
+  const [vue,     setVue]     = useState('liste');    // 'liste' | 'ajan'
+  const [selFich, setSelFich] = useState(null);       // modal detay fich
+  const [selAjan, setSelAjan] = useState(null);       // modal detay ajan
   const [wsConn,  setWsConn]  = useState(false);
   const [newFiches, setNewFiches] = useState([]);
-  const [filtreAjan, setFiltreAjan] = useState('Tout'); // NEW: filtre pa ajan
-  const [agents,    setAgents]    = useState([]);       // NEW: lis ajan
-  const PER_PAGE = 15;
+  const [filtreAjan, setFiltreAjan] = useState('Tout');
+  const [agents,  setAgents]  = useState([]);
+  const [actioning, setActioning] = useState(false);
+  const PER_PAGE = 20;
 
-  // ── WebSocket — fich nouvo an tan reyèl ─────────────────────
+  // WebSocket
   useEffect(() => {
     let ws;
     const connect = () => {
@@ -39,9 +66,8 @@ export default function FichesVendu() {
         ws.onmessage = (e) => {
           try {
             const msg = JSON.parse(e.data);
-            if (msg.type === 'nouvelle_fiche') {
+            if (msg.type === 'nouvelle_fiche')
               setNewFiches(prev => [msg, ...prev].slice(0, 50));
-            }
           } catch {}
         };
       } catch {}
@@ -50,16 +76,15 @@ export default function FichesVendu() {
     return () => { try { ws?.close(); } catch {} };
   }, []);
 
-  // Chaje lis ajan
   useEffect(() => {
     api.get('/api/admin/agents').then(r => {
-      setAgents(Array.isArray(r.data) ? r.data.filter(a => a.role !== 'admin' && a.role !== 'superadmin') : []);
+      setAgents(Array.isArray(r.data)
+        ? r.data.filter(a => a.role !== 'admin' && a.role !== 'superadmin') : []);
     }).catch(() => {});
   }, []);
 
   const load = async () => {
-    setLoading(true);
-    setNewFiches([]);
+    setLoading(true); setNewFiches([]);
     try {
       const params = { debut, fin };
       if (tirage !== 'Tout') params.tirage = tirage;
@@ -72,128 +97,144 @@ export default function FichesVendu() {
     finally { setLoading(false); }
   };
 
-  // Merge fiches DB + fiches tan reyèl (dedupe pa ticket)
   const allFiches = (() => {
     if (!result) return [];
-    const existing = new Set((result || []).map(f => f.ticket));
-    const fresh = newFiches.filter(f => !existing.has(f.ticket));
-    return [...fresh, ...(result || [])];
+    const existing = new Set((result||[]).map(f => f.ticket));
+    return [...newFiches.filter(f => !existing.has(f.ticket)), ...(result||[])];
   })();
 
-  const filtered = allFiches.filter(f => !search || [f.ticket,f.agent,f.tirage,f.posId,f.posNom,f.heure]
-    .some(v => String(v||'').toLowerCase().includes(search.toLowerCase())));
+  const filtered = allFiches.filter(f =>
+    !search || [f.ticket,f.agent,f.tirage,f.posId,f.posNom]
+      .some(v => String(v||'').toLowerCase().includes(search.toLowerCase()))
+  );
   const paginated  = filtered.slice(page * PER_PAGE, (page+1) * PER_PAGE);
   const totalPages = Math.ceil(filtered.length / PER_PAGE);
   const totalVente = filtered.reduce((s,f) => s + parseFloat(f.vente||f.total||0), 0);
   const totalJwe   = filtered.filter(f => f.statut === 'gagnant').length;
-  const totalPete  = filtered.filter(f => f.statut !== 'gagnant' && f.statut !== 'elimine').length;
 
-  const posSummary = filtered.reduce((acc, f) => {
-    const key = f.posId || f.agent || '—';
-    if (!acc[key]) acc[key] = { posId:key, posNom:f.posNom||f.agent||'—', count:0, total:0, fiches:[] };
+  // Rezime pa ajan
+  const ajanSummary = filtered.reduce((acc, f) => {
+    const key = f.agent || f.posId || '—';
+    if (!acc[key]) acc[key] = { nom:key, posId:f.posId||'—', count:0, total:0, fiches:[] };
     acc[key].count++;
     acc[key].total += parseFloat(f.vente||f.total||0);
     acc[key].fiches.push(f);
     return acc;
   }, {});
 
-  const handleExcel = () => {
-    const rows = [
-      ['No Ticket','POS ID','POS Nom','Agent','Tiraj','Dat','Lè','Montant','Statut'],
-      ...filtered.map(f => [f.ticket,f.posId,f.posNom,f.agent,f.tirage,
-        f.date ? new Date(f.date).toLocaleDateString('fr') : '—',
-        f.heure||'—', f.vente||f.total||0, f.statut||'actif'])
-    ];
-    const csv = rows.map(r => r.join(',')).join('\n');
-    const a = document.createElement('a');
-    a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-    a.download = `fiches-vendu-${debut}-${fin}.csv`;
-    a.click();
+  // Aksyon admin sou yon fich
+  const doAction = async (action, fich) => {
+    if (!confirm(
+      action === 'elimine' ? `Elimine fich #${fich.ticket}?\nAksyon sa pa ka derefè.`
+      : action === 'bloke' ? `Bloke fich #${fich.ticket}?`
+      : `Debloke fich #${fich.ticket}?`
+    )) return;
+    setActioning(true);
+    try {
+      if (action === 'elimine') {
+        await api.delete(`/api/admin/fiches/${fich._id||fich.ticket}`);
+      } else {
+        await api.put(`/api/admin/fiches/${fich._id||fich.ticket}/statut`, {
+          statut: action === 'bloke' ? 'bloke' : 'actif'
+        });
+      }
+      setSelFich(null);
+      load();
+    } catch (e) { alert('Erè: ' + (e?.response?.data?.message || e.message)); }
+    setActioning(false);
   };
-
-  const fmtDate = (d) => d ? new Date(d).toLocaleDateString('fr',{day:'2-digit',month:'2-digit',year:'2-digit'}) : '—';
 
   return (
     <Layout>
-      <div style={{ maxWidth:1100, margin:'0 auto' }}>
+      <div style={{ maxWidth:700, margin:'0 auto', padding:'0 4px' }}>
 
         {/* BANNIÈRE */}
-        <div style={{ background:'linear-gradient(135deg,#1a73e8,#0d47a1)', borderRadius:10, padding:'14px 20px', marginBottom:14, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-          <span style={{ fontWeight:900, fontSize:15, color:'white' }}>LA-PROBITE-BORLETTE — Fichè Vann</span>
+        <div style={{ background:'linear-gradient(135deg,#1a73e8,#0d47a1)', borderRadius:12,
+          padding:'12px 16px', marginBottom:12,
+          display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          <span style={{ fontWeight:900, fontSize:14, color:'white' }}>📋 Fichè Vann</span>
           <span style={{ fontSize:11, color: wsConn?'#86efac':'#fca5a5', fontWeight:700 }}>
-            {wsConn ? '🟢 Tan Reyèl Aktif' : '🔴 Hòs Liy'}
+            {wsConn ? '🟢 Live' : '🔴 Hòs Liy'}
           </span>
         </div>
 
-        {/* FILTRES */}
-        <div className="card" style={{ marginBottom:14 }}>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr auto', gap:12, marginBottom: result!==null ? 14 : 0, alignItems:'end' }}>
-            {[['Debut',debut,setDebut],['Fin',fin,setFin]].map(([l,v,s]) => (
+        {/* FILTRES — stack vertical sou mobil */}
+        <div style={{ background:'white', borderRadius:12, padding:14, marginBottom:12,
+          boxShadow:'0 1px 4px rgba(0,0,0,0.08)' }}>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
+            {[['📅 Debut',debut,setDebut],['📅 Fin',fin,setFin]].map(([l,v,s]) => (
               <div key={l}>
-                <label style={{ display:'block', fontWeight:700, fontSize:12, marginBottom:5, color:'#555' }}>{l}</label>
+                <label style={{ display:'block', fontWeight:700, fontSize:11, marginBottom:4, color:'#555' }}>{l}</label>
                 <input type="date" value={v} onChange={e => s(e.target.value)}
-                  style={{ width:'100%', padding:'9px 12px', border:'1.5px solid #ddd', borderRadius:6, fontSize:13, boxSizing:'border-box' }} />
+                  style={{ width:'100%', padding:'10px 10px', border:'1.5px solid #ddd',
+                    borderRadius:8, fontSize:13, boxSizing:'border-box' }} />
               </div>
             ))}
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:12 }}>
             <div>
-              <label style={{ display:'block', fontWeight:700, fontSize:12, marginBottom:5, color:'#555' }}>Tiraj</label>
+              <label style={{ display:'block', fontWeight:700, fontSize:11, marginBottom:4, color:'#555' }}>🎯 Tiraj</label>
               <select value={tirage} onChange={e => setTirage(e.target.value)}
-                style={{ width:'100%', padding:'9px 12px', border:'1.5px solid #ddd', borderRadius:6, fontSize:13 }}>
+                style={{ width:'100%', padding:'10px', border:'1.5px solid #ddd', borderRadius:8, fontSize:13 }}>
                 {TIRAGES.map(t => <option key={t}>{t}</option>)}
               </select>
             </div>
             <div>
-              <label style={{ display:'block', fontWeight:700, fontSize:12, marginBottom:5, color:'#16a34a' }}>
-                👤 Ajan
-              </label>
+              <label style={{ display:'block', fontWeight:700, fontSize:11, marginBottom:4, color:'#16a34a' }}>👤 Ajan</label>
               <select value={filtreAjan} onChange={e => setFiltreAjan(e.target.value)}
-                style={{ width:'100%', padding:'9px 12px', border:'1.5px solid #16a34a', borderRadius:6, fontSize:13 }}>
+                style={{ width:'100%', padding:'10px', border:'1.5px solid #16a34a', borderRadius:8, fontSize:13 }}>
                 <option value="Tout">Tout Ajan</option>
                 {agents.map(a => (
                   <option key={a._id||a.id} value={a.username}>
-                    {a.prenom} {a.nom} ({a.username})
+                    {a.prenom} {a.nom}
                   </option>
                 ))}
               </select>
             </div>
-            <button onClick={load} disabled={loading}
-              style={{ padding:'9px 24px', background:loading?'#ccc':'#1a73e8', color:'white', border:'none', borderRadius:6, fontWeight:800, fontSize:14, cursor:loading?'not-allowed':'pointer', height:40 }}>
-              {loading ? '⏳' : '🔍 Chèche'}
-            </button>
           </div>
-
-          {result !== null && (
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:10 }}>
-              {[
-                { label:'Total Fichè', val:filtered.length,                   icon:'🎫', color:'#1a73e8' },
-                { label:'Total Vant',  val:`${totalVente.toFixed(0)} G`,      icon:'💰', color:'#16a34a' },
-                { label:'🏆 Jwe (Gagnant)', val:totalJwe,                     icon:'🏆', color:'#f59e0b' },
-                { label:'Pete (Pèdi)', val:totalPete,                          icon:'❌', color:'#dc2626' },
-                { label:'POS Aktif',   val:Object.keys(posSummary).length,    icon:'🖥️', color:'#7c3aed' },
-              ].map(s => (
-                <div key={s.label} style={{ background:'#f8f9fa', borderRadius:8, padding:'12px 14px', borderLeft:`4px solid ${s.color}` }}>
-                  <div style={{ fontSize:18, marginBottom:4 }}>{s.icon}</div>
-                  <div style={{ fontWeight:900, fontSize:16, color:s.color }}>{s.val}</div>
-                  <div style={{ fontSize:11, color:'#888' }}>{s.label}</div>
-                </div>
-              ))}
-            </div>
-          )}
+          <button onClick={load} disabled={loading}
+            style={{ width:'100%', padding:'13px', background:loading?'#ccc':'#1a73e8',
+              color:'white', border:'none', borderRadius:10, fontWeight:900,
+              fontSize:15, cursor:loading?'not-allowed':'pointer' }}>
+            {loading ? '⏳ Ap chaje...' : '🔍 Chèche Fichè'}
+          </button>
         </div>
 
-        {/* FICHES TAN REYÈL (si yo prezan avan search) */}
+        {/* STATS */}
+        {result !== null && (
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8, marginBottom:12 }}>
+            {[
+              { v:filtered.length, l:'Total Fichè', c:'#1a73e8', icon:'🎫' },
+              { v:`${totalVente.toFixed(0)}G`, l:'Total Vant', c:'#16a34a', icon:'💰' },
+              { v:totalJwe, l:'Jwe', c:'#f59e0b', icon:'🏆' },
+            ].map(st => (
+              <div key={st.l} style={{ background:'white', borderRadius:10, padding:'12px 10px',
+                borderLeft:`4px solid ${st.c}`, boxShadow:'0 1px 3px rgba(0,0,0,0.07)' }}>
+                <div style={{ fontSize:16, marginBottom:2 }}>{st.icon}</div>
+                <div style={{ fontWeight:900, fontSize:18, color:st.c }}>{st.v}</div>
+                <div style={{ fontSize:10, color:'#888', fontWeight:700 }}>{st.l}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* LIVE FICHES */}
         {newFiches.length > 0 && (
-          <div style={{ background:'#f0fdf4', border:'2px solid #16a34a', borderRadius:10, padding:12, marginBottom:14 }}>
-            <div style={{ fontWeight:800, fontSize:13, color:'#16a34a', marginBottom:8 }}>
-              🔴 LIVE — {newFiches.length} nouvèl fich depi dènye chèche:
+          <div style={{ background:'#f0fdf4', border:'2px solid #16a34a', borderRadius:10,
+            padding:12, marginBottom:12 }}>
+            <div style={{ fontWeight:800, fontSize:12, color:'#16a34a', marginBottom:8 }}>
+              🔴 LIVE — {newFiches.length} nouvèl fich:
             </div>
             <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-              {newFiches.slice(0,8).map((f,i) => (
+              {newFiches.slice(0,6).map((f,i) => (
                 <div key={i} onClick={() => setSelFich(f)}
-                  style={{ background:'white', border:'1px solid #bbf7d0', borderRadius:8, padding:'8px 12px', cursor:'pointer', fontSize:12 }}>
-                  <div style={{ fontWeight:900, color:'#f59e0b', fontFamily:'monospace' }}>{f.ticket}</div>
-                  <div style={{ color:'#555' }}>{f.agent} · {f.tirage}</div>
-                  <div style={{ color:'#16a34a', fontWeight:700 }}>{f.total} G · {f.heure}</div>
+                  style={{ background:'white', border:'1px solid #bbf7d0', borderRadius:8,
+                    padding:'8px 12px', cursor:'pointer', minWidth:130 }}>
+                  <div style={{ fontWeight:900, color:'#f59e0b', fontFamily:'monospace', fontSize:12 }}>
+                    {f.ticket}
+                  </div>
+                  <div style={{ color:'#555', fontSize:11 }}>{f.agent}</div>
+                  <div style={{ color:'#16a34a', fontWeight:700, fontSize:12 }}>{f.total}G</div>
                 </div>
               ))}
             </div>
@@ -201,177 +242,150 @@ export default function FichesVendu() {
         )}
 
         {result !== null && (
-          <div className="card">
-            {/* TOOLBAR */}
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14, flexWrap:'wrap', gap:10 }}>
-              <div style={{ display:'flex', gap:8 }}>
-                {[['KOPYE',()=>{ const t=filtered.map(f=>`${f.ticket}\t${f.agent}\t${f.tirage}\t${f.heure||'—'}\t${f.total}`).join('\n'); navigator.clipboard?.writeText(t); alert('Kopye!'); }],
-                  ['EXCEL',handleExcel],['IMPRIMER',()=>window.print()]].map(([l,fn]) => (
-                  <button key={l} onClick={fn} style={{ background:'white', border:'1px solid #ccc', borderRadius:4, padding:'6px 14px', fontWeight:700, fontSize:12, cursor:'pointer' }}>{l}</button>
-                ))}
-              </div>
-              <div style={{ display:'flex', gap:6 }}>
-                {[['fiche','📋 Pa Fichè'],['pos','🖥️ Pa POS']].map(([k,l]) => (
-                  <button key={k} onClick={() => setGroupBy(k)}
-                    style={{ padding:'7px 14px', border:'none', borderRadius:6, fontWeight:700, fontSize:12, cursor:'pointer',
-                      background:groupBy===k?'#1a73e8':'#f8f9fa', color:groupBy===k?'white':'#555' }}>{l}</button>
-                ))}
-              </div>
-              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                <input value={search} onChange={e => { setSearch(e.target.value); setPage(0); }}
-                  style={{ padding:'6px 10px', border:'1px solid #ccc', borderRadius:4, fontSize:12, width:200 }}
-                  placeholder="ticket, agent, POS..." />
-              </div>
+          <div style={{ background:'white', borderRadius:12, padding:14,
+            boxShadow:'0 1px 4px rgba(0,0,0,0.08)' }}>
+
+            {/* VUE SELECTOR + RECHÈCH */}
+            <div style={{ display:'flex', gap:8, marginBottom:12, flexWrap:'wrap' }}>
+              {[['liste','📋 Pa Fich'],['ajan','👤 Pa Ajan']].map(([k,l]) => (
+                <button key={k} onClick={() => setVue(k)}
+                  style={{ flex:1, padding:'9px 0', border:'none', borderRadius:8, fontWeight:700,
+                    fontSize:13, cursor:'pointer', background: vue===k?'#1a73e8':'#f3f4f6',
+                    color: vue===k?'white':'#555' }}>
+                  {l}
+                </button>
+              ))}
             </div>
 
-            {/* VUE PA FICH */}
-            {groupBy === 'fiche' && (
-              <div style={{ overflowX:'auto' }}>
-                <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
-                  <thead>
-                    <tr style={{ background:'#f8f9fa', borderBottom:'2px solid #dee2e6' }}>
-                      {['No Ticket','POS / Ajan','Tiraj','Lè','Montant','Jwe/Pete','Detay'].map(h => (
-                        <th key={h} style={{ padding:'10px 14px', textAlign:'left', fontWeight:800, fontSize:12, color:'#333' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paginated.length === 0 ? (
-                      <tr><td colSpan={7} style={{ padding:30, textAlign:'center', color:'#888' }}>
-                        Pa gen fichè — klike Chèche
-                      </td></tr>
-                    ) : paginated.map((f, i) => {
-                      const isNew = newFiches.some(n => n.ticket === f.ticket);
-                      const isGagnant = f.statut === 'gagnant';
-                      return (
-                        <tr key={f.ticket||i}
-                          style={{ borderBottom:'1px solid #f0f0f0', background: isNew ? '#f0fdf4' : i%2===0?'white':'#fafafa',
-                            animation: isNew ? 'fadeIn 0.5s' : 'none' }}>
-                          <td style={{ padding:'10px 14px' }}>
-                            <span style={{ color:'#f59e0b', fontWeight:900, fontFamily:'monospace' }}>{f.ticket||'—'}</span>
-                            {isNew && <span style={{ marginLeft:6, background:'#16a34a', color:'white', borderRadius:10, padding:'1px 6px', fontSize:9, fontWeight:700 }}>LIVE</span>}
-                          </td>
-                          <td style={{ padding:'10px 14px' }}>
-                            <div style={{ fontWeight:700, fontSize:12 }}>{f.agent||'—'}</div>
-                            <div style={{ color:'#1a73e8', fontSize:10, fontFamily:'monospace' }}>{f.posId||'—'}</div>
-                          </td>
-                          <td style={{ padding:'10px 14px', fontSize:12, color:'#555' }}>{f.tirage||'—'}</td>
-                          <td style={{ padding:'10px 14px' }}>
-                            <span style={{ background:'#fef3c7', color:'#92400e', borderRadius:12, padding:'3px 10px', fontWeight:800, fontSize:12 }}>
-                              {f.heure||fmtDate(f.date)||'—'}
-                            </span>
-                          </td>
-                          <td style={{ padding:'10px 14px' }}>
-                            <span style={{ background:'#dcfce7', color:'#16a34a', borderRadius:12, padding:'4px 12px', fontWeight:900, fontSize:13 }}>
-                              {parseFloat(f.vente||f.total||0).toFixed(0)} G
-                            </span>
-                          </td>
-                          <td style={{ padding:'10px 14px' }}>
-                            {isGagnant
-                              ? <span style={{ background:'#fef9c3', color:'#854d0e', borderRadius:10, padding:'3px 10px', fontWeight:700, fontSize:11 }}>🏆 JWE</span>
-                              : f.statut === 'elimine'
-                              ? <span style={{ background:'#fee2e2', color:'#dc2626', borderRadius:10, padding:'3px 10px', fontWeight:700, fontSize:11 }}>❌ Elimine</span>
-                              : <span style={{ background:'#f1f5f9', color:'#64748b', borderRadius:10, padding:'3px 10px', fontWeight:700, fontSize:11 }}>💨 Pete</span>
-                            }
-                          </td>
-                          <td style={{ padding:'10px 14px' }}>
-                            <button onClick={() => setSelFich(f)}
-                              style={{ background:'#1a73e8', color:'white', border:'none', borderRadius:6, padding:'5px 12px', cursor:'pointer', fontWeight:700, fontSize:11 }}>
-                              👁️ Wè
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                  {filtered.length > 0 && (
-                    <tfoot>
-                      <tr style={{ background:'#f0fdf4', borderTop:'2px solid #dee2e6' }}>
-                        <td colSpan={4} style={{ padding:'10px 14px', textAlign:'right', color:'#555', fontWeight:800 }}>
-                          TOTAL — {filtered.length} fichè:
-                        </td>
-                        <td style={{ padding:'10px 14px' }}>
-                          <span style={{ color:'#16a34a', fontSize:15, fontWeight:900 }}>{totalVente.toFixed(0)} G</span>
-                        </td>
-                        <td colSpan={2} style={{ padding:'10px 14px', fontSize:11, color:'#888' }}>
-                          🏆 {totalJwe} jwe · 💨 {totalPete} pete
-                        </td>
-                      </tr>
-                    </tfoot>
-                  )}
-                </table>
-              </div>
-            )}
+            <input value={search} onChange={e => { setSearch(e.target.value); setPage(0); }}
+              placeholder="🔍 Chèche ticket, ajan, POS..."
+              style={{ width:'100%', padding:'10px 12px', border:'1.5px solid #ddd',
+                borderRadius:8, fontSize:13, marginBottom:12, boxSizing:'border-box' }} />
 
-            {/* VUE PA POS */}
-            {groupBy === 'pos' && (
+            {/* ── VUE LISTE PA FICH — KARD MOBIL ── */}
+            {vue === 'liste' && (
               <div>
-                {Object.values(posSummary).sort((a,b) => b.total-a.total).map((pos, i) => (
-                  <div key={pos.posId} style={{ marginBottom:16, border:'1px solid #e2e8f0', borderRadius:10, overflow:'hidden' }}>
-                    <div style={{ background:'#1e293b', padding:'12px 16px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                      <div>
-                        <span style={{ color:'white', fontWeight:900, fontSize:14 }}>🖥️ {pos.posId}</span>
-                        {pos.posNom && <span style={{ color:'#94a3b8', fontSize:12, marginLeft:10 }}>{pos.posNom}</span>}
-                      </div>
-                      <div style={{ display:'flex', gap:16 }}>
-                        <span style={{ color:'#94a3b8', fontSize:12 }}>{pos.count} fichè</span>
-                        <span style={{ background:'#16a34a', color:'white', borderRadius:8, padding:'4px 14px', fontWeight:900 }}>
-                          {pos.total.toFixed(0)} G
+                {paginated.length === 0 ? (
+                  <div style={{ textAlign:'center', padding:'32px 0', color:'#888' }}>
+                    Pa gen fichè — klike Chèche
+                  </div>
+                ) : paginated.map((f, i) => {
+                  const isNew = newFiches.some(n => n.ticket === f.ticket);
+                  return (
+                    <div key={f.ticket||i}
+                      onClick={() => setSelFich(f)}
+                      style={{ borderRadius:10, padding:'12px 14px', marginBottom:8,
+                        border: isNew ? '2px solid #16a34a' : '1px solid #e5e7eb',
+                        background: isNew ? '#f0fdf4' : 'white',
+                        cursor:'pointer', position:'relative' }}>
+                      {isNew && (
+                        <span style={{ position:'absolute', top:8, right:8, background:'#16a34a',
+                          color:'white', borderRadius:8, padding:'1px 7px', fontSize:10,
+                          fontWeight:800 }}>LIVE</span>
+                      )}
+                      {/* Liy 1: Ticket + Montan */}
+                      <div style={{ display:'flex', justifyContent:'space-between',
+                        alignItems:'center', marginBottom:6 }}>
+                        <span style={{ fontWeight:900, fontFamily:'monospace', fontSize:15,
+                          color:'#f59e0b' }}>#{f.ticket||'—'}</span>
+                        <span style={{ fontWeight:900, fontSize:16, color:'#16a34a' }}>
+                          {parseFloat(f.vente||f.total||0).toFixed(0)}G
                         </span>
                       </div>
+                      {/* Liy 2: Ajan + Tiraj */}
+                      <div style={{ display:'flex', justifyContent:'space-between',
+                        alignItems:'center', marginBottom:4 }}>
+                        <span style={{ fontSize:13, fontWeight:700, color:'#374151' }}>
+                          👤 {f.agent||'—'}
+                        </span>
+                        <span style={{ fontSize:12, color:'#6b7280' }}>{f.tirage||'—'}</span>
+                      </div>
+                      {/* Liy 3: Dat + Statut */}
+                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                        <span style={{ fontSize:11, color:'#9ca3af' }}>
+                          {f.heure || fmtDate(f.date)}
+                        </span>
+                        <Statut s={f.statut} />
+                      </div>
                     </div>
-                    <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
-                      <thead>
-                        <tr style={{ background:'#f8fafc', borderBottom:'1px solid #e2e8f0' }}>
-                          {['Ticket','Ajan','Tiraj','Lè','Montant','Statut','Detay'].map(h => (
-                            <th key={h} style={{ padding:'8px 14px', textAlign:'left', fontWeight:700, color:'#64748b', fontSize:11 }}>{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {pos.fiches.slice(0,20).map((f, j) => (
-                          <tr key={f.ticket||j} style={{ borderBottom:'1px solid #f1f5f9', background:j%2===0?'white':'#fafafa' }}>
-                            <td style={{ padding:'8px 14px', fontFamily:'monospace', color:'#f59e0b', fontWeight:700 }}>{f.ticket||'—'}</td>
-                            <td style={{ padding:'8px 14px' }}>{f.agent||'—'}</td>
-                            <td style={{ padding:'8px 14px', color:'#64748b' }}>{f.tirage||'—'}</td>
-                            <td style={{ padding:'8px 14px' }}>
-                              <span style={{ background:'#fef3c7', color:'#92400e', borderRadius:10, padding:'2px 8px', fontWeight:800 }}>{f.heure||'—'}</span>
-                            </td>
-                            <td style={{ padding:'8px 14px', fontWeight:800, color:'#16a34a' }}>{parseFloat(f.vente||f.total||0).toFixed(0)} G</td>
-                            <td style={{ padding:'8px 14px' }}>
-                              <span style={{ color: f.statut==='gagnant'?'#f59e0b': f.statut==='elimine'?'#dc2626':'#64748b', fontWeight:700, fontSize:11 }}>
-                                {f.statut==='gagnant'?'🏆 Jwe': f.statut==='elimine'?'❌':'💨 Pete'}
-                              </span>
-                            </td>
-                            <td style={{ padding:'8px 14px' }}>
-                              <button onClick={() => setSelFich(f)}
-                                style={{ background:'#1a73e8', color:'white', border:'none', borderRadius:5, padding:'3px 10px', cursor:'pointer', fontWeight:700, fontSize:11 }}>
-                                👁️
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  );
+                })}
+
+                {/* TOTAL */}
+                {filtered.length > 0 && (
+                  <div style={{ background:'#0f172a', borderRadius:10, padding:'12px 16px',
+                    display:'flex', justifyContent:'space-between', alignItems:'center',
+                    marginTop:4, marginBottom:12 }}>
+                    <span style={{ color:'#94a3b8', fontWeight:700, fontSize:13 }}>
+                      {filtered.length} fichè total
+                    </span>
+                    <span style={{ color:'#f59e0b', fontWeight:900, fontSize:18 }}>
+                      {totalVente.toFixed(0)} G
+                    </span>
                   </div>
-                ))}
-                {Object.keys(posSummary).length === 0 && (
-                  <div style={{ padding:40, textAlign:'center', color:'#888' }}>Pa gen done</div>
+                )}
+
+                {/* PAGINATION */}
+                {totalPages > 1 && (
+                  <div style={{ display:'flex', justifyContent:'space-between',
+                    alignItems:'center', gap:8 }}>
+                    <button onClick={() => setPage(p => Math.max(0,p-1))} disabled={page===0}
+                      style={{ flex:1, padding:'10px', border:'1px solid #ddd', borderRadius:8,
+                        background:'white', cursor:page===0?'default':'pointer',
+                        color:page===0?'#ccc':'#333', fontWeight:700 }}>
+                      ← Anvan
+                    </button>
+                    <span style={{ padding:'10px 16px', background:'#1a73e8', color:'white',
+                      borderRadius:8, fontWeight:700, fontSize:13 }}>
+                      {page+1} / {totalPages}
+                    </span>
+                    <button onClick={() => setPage(p => Math.min(totalPages-1,p+1))}
+                      disabled={page>=totalPages-1}
+                      style={{ flex:1, padding:'10px', border:'1px solid #ddd', borderRadius:8,
+                        background:'white', cursor:page>=totalPages-1?'default':'pointer',
+                        color:page>=totalPages-1?'#ccc':'#333', fontWeight:700 }}>
+                      Suiv →
+                    </button>
+                  </div>
                 )}
               </div>
             )}
 
-            {/* PAGINATION */}
-            {groupBy === 'fiche' && (
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:14, color:'#666', fontSize:13 }}>
-                <span>Montre {filtered.length===0?0:page*PER_PAGE+1}–{Math.min((page+1)*PER_PAGE,filtered.length)} nan {filtered.length}</span>
-                <div style={{ display:'flex', gap:8 }}>
-                  <button onClick={() => setPage(p => Math.max(0,p-1))} disabled={page===0}
-                    style={{ padding:'5px 14px', border:'1px solid #dee2e6', borderRadius:4, background:'white', cursor:page===0?'default':'pointer', color:page===0?'#aaa':'#333' }}>← Anvan</button>
-                  <span style={{ padding:'5px 10px', background:'#1a73e8', color:'white', borderRadius:4, fontWeight:700 }}>{page+1}/{Math.max(1,totalPages)}</span>
-                  <button onClick={() => setPage(p => Math.min(totalPages-1,p+1))} disabled={page>=totalPages-1}
-                    style={{ padding:'5px 14px', border:'1px solid #dee2e6', borderRadius:4, background:'white', cursor:page>=totalPages-1?'default':'pointer', color:page>=totalPages-1?'#aaa':'#333' }}>Suiv →</button>
-                </div>
+            {/* ── VUE PA AJAN — KARD CHAK AJAN ── */}
+            {vue === 'ajan' && (
+              <div>
+                {Object.values(ajanSummary).length === 0 ? (
+                  <div style={{ textAlign:'center', padding:'32px 0', color:'#888' }}>
+                    Pa gen done
+                  </div>
+                ) : Object.values(ajanSummary)
+                    .sort((a,b) => b.total - a.total)
+                    .map(aj => (
+                  <div key={aj.nom}
+                    onClick={() => setSelAjan(aj)}
+                    style={{ borderRadius:10, padding:'14px', marginBottom:10,
+                      border:'1px solid #e5e7eb', background:'white', cursor:'pointer' }}>
+                    <div style={{ display:'flex', justifyContent:'space-between',
+                      alignItems:'center', marginBottom:6 }}>
+                      <span style={{ fontWeight:900, fontSize:15, color:'#1e293b' }}>
+                        👤 {aj.nom}
+                      </span>
+                      <span style={{ fontWeight:900, fontSize:17, color:'#16a34a' }}>
+                        {aj.total.toFixed(0)} G
+                      </span>
+                    </div>
+                    <div style={{ display:'flex', justifyContent:'space-between',
+                      alignItems:'center' }}>
+                      <span style={{ fontSize:11, color:'#6b7280' }}>
+                        POS: {aj.posId}
+                      </span>
+                      <span style={{ background:'#eff6ff', color:'#1a73e8', borderRadius:20,
+                        padding:'2px 10px', fontSize:12, fontWeight:700 }}>
+                        {aj.count} fichè
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -380,39 +394,45 @@ export default function FichesVendu() {
 
       {/* ═══ MODAL DETAY FICH ═══ */}
       {selFich && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.65)', zIndex:1000,
-          display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.7)', zIndex:1000,
+          display:'flex', alignItems:'flex-end', justifyContent:'center' }}
           onClick={() => setSelFich(null)}>
-          <div style={{ background:'white', borderRadius:16, padding:0, width:'100%',
-            maxWidth:480, overflow:'hidden', boxShadow:'0 20px 60px rgba(0,0,0,0.3)' }}
+          <div style={{ background:'white', borderRadius:'20px 20px 0 0', padding:0,
+            width:'100%', maxWidth:600, maxHeight:'90vh', overflowY:'auto' }}
             onClick={e=>e.stopPropagation()}>
-            {/* Header modal */}
-            <div style={{ background:'linear-gradient(135deg,#1e293b,#0f172a)', padding:'16px 20px',
-              display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-              <div>
-                <div style={{ color:'white', fontWeight:900, fontSize:16, fontFamily:'monospace' }}>
-                  #{selFich.ticket}
+
+            {/* Handle */}
+            <div style={{ width:44, height:5, background:'#ddd', borderRadius:3,
+              margin:'12px auto 0' }} />
+
+            {/* Header */}
+            <div style={{ background:'linear-gradient(135deg,#1e293b,#0f172a)',
+              padding:'14px 18px', margin:'12px 0 0' }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                <div>
+                  <div style={{ color:'white', fontWeight:900, fontSize:17,
+                    fontFamily:'monospace' }}>#{selFich.ticket}</div>
+                  <div style={{ color:'#94a3b8', fontSize:11, marginTop:2 }}>
+                    {selFich.tirage} · {selFich.heure || fmtDate(selFich.date)}
+                  </div>
                 </div>
-                <div style={{ color:'#94a3b8', fontSize:11, marginTop:2 }}>
-                  {selFich.tirage} · {selFich.heure || fmtDate(selFich.date)}
-                </div>
+                <button onClick={() => setSelFich(null)}
+                  style={{ background:'rgba(255,255,255,0.15)', border:'none', color:'white',
+                    borderRadius:8, width:34, height:34, cursor:'pointer', fontSize:17 }}>✕</button>
               </div>
-              <button onClick={() => setSelFich(null)}
-                style={{ background:'rgba(255,255,255,0.1)', border:'none', color:'white',
-                  borderRadius:8, width:32, height:32, cursor:'pointer', fontSize:16 }}>✕</button>
             </div>
 
-            <div style={{ padding:20 }}>
-              {/* Infos */}
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:16 }}>
+            <div style={{ padding:'16px 18px 32px' }}>
+              {/* Info grid */}
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:14 }}>
                 {[
-                  ['Ajan', selFich.agent||'—'],
-                  ['POS', selFich.posId||'—'],
-                  ['Dat', fmtDate(selFich.date)],
-                  ['Total', `${parseFloat(selFich.vente||selFich.total||0).toFixed(0)} HTG`],
+                  ['👤 Ajan', selFich.agent||'—'],
+                  ['🖥️ POS',  selFich.posId||'—'],
+                  ['📅 Dat',  fmtDate(selFich.date)],
+                  ['💰 Total', `${parseFloat(selFich.vente||selFich.total||0).toFixed(0)} HTG`],
                 ].map(([l,v]) => (
                   <div key={l} style={{ background:'#f8f9fa', borderRadius:8, padding:'10px 12px' }}>
-                    <div style={{ fontSize:11, color:'#888', fontWeight:600 }}>{l}</div>
+                    <div style={{ fontSize:11, color:'#888', fontWeight:700 }}>{l}</div>
                     <div style={{ fontWeight:800, fontSize:13, marginTop:2 }}>{v}</div>
                   </div>
                 ))}
@@ -420,98 +440,174 @@ export default function FichesVendu() {
 
               {/* Statut */}
               <div style={{ textAlign:'center', marginBottom:14 }}>
-                {selFich.statut==='gagnant'
-                  ? <span style={{ background:'#fef9c3', color:'#854d0e', borderRadius:20, padding:'6px 20px', fontWeight:900, fontSize:14 }}>🏆 JWE — GAGNANT!</span>
-                  : selFich.statut==='elimine'
-                  ? <span style={{ background:'#fee2e2', color:'#dc2626', borderRadius:20, padding:'6px 20px', fontWeight:900 }}>❌ ELIMINE</span>
-                  : selFich.statut==='bloke'
-                  ? <span style={{ background:'#fef3c7', color:'#d97706', borderRadius:20, padding:'6px 20px', fontWeight:900 }}>🔒 BLOKE</span>
-                  : <span style={{ background:'#f1f5f9', color:'#475569', borderRadius:20, padding:'6px 20px', fontWeight:900 }}>💨 Pete</span>
-                }
+                <Statut s={selFich.statut} />
               </div>
 
-              {/* Boules */}
-              {selFich.rows?.length > 0 && (
+              {/* ── BOUL YO — klè tankou ticket ── */}
+              {(selFich.rows||[]).length > 0 && (
                 <div style={{ marginBottom:16 }}>
-                  <div style={{ fontWeight:800, fontSize:13, marginBottom:8, color:'#333' }}>Boule yo:</div>
-                  <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
-                    <thead>
-                      <tr style={{ background:'#f8f9fa' }}>
-                        {['Boule','Type','Mise'].map(h => (
-                          <th key={h} style={{ padding:'8px 12px', textAlign:'left', fontWeight:700, fontSize:11, color:'#666' }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selFich.rows.map((r,i) => (
-                        <tr key={i} style={{ borderBottom:'1px solid #f0f0f0' }}>
-                          <td style={{ padding:'8px 12px', fontWeight:900, fontFamily:'monospace', fontSize:15, color:'#1a73e8' }}>
-                            {r.boule||'—'}
-                          </td>
-                          <td style={{ padding:'8px 12px', fontSize:12, color:'#555' }}>
-                            {TYPE_LABELS[r.type]||r.type||'—'}
-                          </td>
-                          <td style={{ padding:'8px 12px', fontWeight:800,
-                            color: r.gratuit?'#dc2626':'#16a34a' }}>
-                            {r.gratuit ? 'GRATUI' : `${r.mise||r.montant||0} G`}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr style={{ background:'#f0fdf4', borderTop:'2px solid #dee2e6' }}>
-                        <td colSpan={2} style={{ padding:'8px 12px', fontWeight:800, color:'#555' }}>TOTAL</td>
-                        <td style={{ padding:'8px 12px', fontWeight:900, color:'#16a34a', fontSize:15 }}>
-                          {parseFloat(selFich.vente||selFich.total||0).toFixed(0)} HTG
-                        </td>
-                      </tr>
-                    </tfoot>
-                  </table>
+                  <div style={{ fontWeight:800, fontSize:13, marginBottom:8, color:'#333' }}>
+                    🎯 Boul jwe yo:
+                  </div>
+                  {/* Entete */}
+                  <div style={{ display:'grid', gridTemplateColumns:'2fr 2fr 1fr',
+                    background:'#0f172a', borderRadius:'8px 8px 0 0', padding:'8px 12px' }}>
+                    {['TIP','BOUL','MISE'].map(h => (
+                      <span key={h} style={{ color:'#94a3b8', fontWeight:900,
+                        fontSize:11, letterSpacing:0.5 }}>{h}</span>
+                    ))}
+                  </div>
+                  {/* Rows */}
+                  {(selFich.rows||[]).map((r, i) => (
+                    <div key={i} style={{ display:'grid', gridTemplateColumns:'2fr 2fr 1fr',
+                      padding:'10px 12px',
+                      background: i%2===0 ? '#f8f9fa' : 'white',
+                      borderBottom:'1px solid #e5e7eb' }}>
+                      <span style={{ fontSize:12, fontWeight:800,
+                        color: TYPE_COLORS[r.type]||'#555' }}>
+                        {TYPE_LABELS[r.type]||r.type}
+                      </span>
+                      <span style={{ fontFamily:'monospace', fontWeight:900, fontSize:16,
+                        color:'#111', letterSpacing:1 }}>
+                        {r.boule||r.numero||'—'}
+                      </span>
+                      <span style={{ fontWeight:800, fontSize:13,
+                        color: r.gratuit?'#dc2626':'#16a34a' }}>
+                        {r.gratuit ? 'GRATU' : `${r.mise||r.montant||0}G`}
+                      </span>
+                    </div>
+                  ))}
+                  {/* Total */}
+                  <div style={{ display:'grid', gridTemplateColumns:'2fr 2fr 1fr',
+                    padding:'10px 12px', background:'#0f172a',
+                    borderRadius:'0 0 8px 8px' }}>
+                    <span style={{ color:'white', fontWeight:900, fontSize:13,
+                      gridColumn:'1/3' }}>TOTAL MISE:</span>
+                    <span style={{ color:'#f59e0b', fontWeight:900, fontSize:16 }}>
+                      {parseFloat(selFich.vente||selFich.total||0).toFixed(0)}G
+                    </span>
+                  </div>
                 </div>
               )}
 
-              {/* ── AKSYON ADMIN ── */}
+              {/* AKSYON ADMIN */}
               {selFich.statut !== 'elimine' && (
-                <div style={{ borderTop:'2px solid #f0f0f0', paddingTop:14 }}>
+                <div style={{ borderTop:'1.5px solid #f0f0f0', paddingTop:14 }}>
                   <div style={{ fontSize:12, color:'#888', fontWeight:700, marginBottom:10 }}>
                     ⚡ Aksyon Admin
                   </div>
-                  <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-                    {/* ELIMINE */}
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
                     <button
-                      onClick={async () => {
-                        if (!confirm(`Elimine fich #${selFich.ticket}?\nAksyon sa a pa ka derefè.`)) return;
-                        try {
-                          await api.delete(`/api/admin/fiches/${selFich._id||selFich.ticket}`);
-                          setSelFich(null);
-                          load();
-                        } catch (e) { alert('Erè: ' + (e?.response?.data?.message || e.message)); }
-                      }}
-                      style={{ flex:1, padding:'10px 14px', background:'#dc2626', color:'white',
-                        border:'none', borderRadius:8, fontWeight:800, cursor:'pointer', fontSize:13 }}>
-                      🗑️ Elimine Fich
+                      disabled={actioning}
+                      onClick={() => doAction('elimine', selFich)}
+                      style={{ padding:'12px', background:'#dc2626', color:'white',
+                        border:'none', borderRadius:8, fontWeight:800, cursor:'pointer',
+                        fontSize:13, opacity: actioning ? 0.6 : 1 }}>
+                      🗑️ Elimine
                     </button>
-
-                    {/* BLOKE / DEBLOKE */}
                     <button
-                      onClick={async () => {
-                        const action = selFich.statut === 'bloke' ? 'debloke' : 'bloke';
-                        if (!confirm(`${action === 'bloke' ? 'Bloke' : 'Debloke'} fich #${selFich.ticket}?`)) return;
-                        try {
-                          await api.put(`/api/admin/fiches/${selFich._id||selFich.ticket}/statut`, { statut: action === 'bloke' ? 'bloke' : 'actif' });
-                          setSelFich(null);
-                          load();
-                        } catch (e) { alert('Erè: ' + (e?.response?.data?.message || e.message)); }
-                      }}
-                      style={{ flex:1, padding:'10px 14px',
+                      disabled={actioning}
+                      onClick={() => doAction(
+                        selFich.statut === 'bloke' ? 'debloke' : 'bloke', selFich
+                      )}
+                      style={{ padding:'12px',
                         background: selFich.statut==='bloke' ? '#16a34a' : '#f59e0b',
                         color:'white', border:'none', borderRadius:8, fontWeight:800,
-                        cursor:'pointer', fontSize:13 }}>
-                      {selFich.statut==='bloke' ? '🔓 Debloke' : '🔒 Bloke Fich'}
+                        cursor:'pointer', fontSize:13, opacity: actioning ? 0.6 : 1 }}>
+                      {selFich.statut==='bloke' ? '🔓 Debloke' : '🔒 Bloke'}
                     </button>
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ MODAL DETAY AJAN — tout fich li ak boul ═══ */}
+      {selAjan && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.7)', zIndex:1000,
+          display:'flex', alignItems:'flex-end', justifyContent:'center' }}
+          onClick={() => setSelAjan(null)}>
+          <div style={{ background:'white', borderRadius:'20px 20px 0 0',
+            width:'100%', maxWidth:600, maxHeight:'90vh', overflowY:'auto' }}
+            onClick={e=>e.stopPropagation()}>
+
+            <div style={{ width:44, height:5, background:'#ddd', borderRadius:3,
+              margin:'12px auto 0' }} />
+
+            {/* Header ajan */}
+            <div style={{ background:'linear-gradient(135deg,#16a34a,#14532d)',
+              padding:'14px 18px', margin:'12px 0 0' }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                <div>
+                  <div style={{ color:'white', fontWeight:900, fontSize:17 }}>
+                    👤 {selAjan.nom}
+                  </div>
+                  <div style={{ color:'rgba(255,255,255,0.7)', fontSize:11, marginTop:2 }}>
+                    POS: {selAjan.posId} · {selAjan.count} fichè
+                  </div>
+                </div>
+                <div style={{ textAlign:'right' }}>
+                  <div style={{ color:'#fef9c3', fontWeight:900, fontSize:22 }}>
+                    {selAjan.total.toFixed(0)}G
+                  </div>
+                  <div style={{ color:'rgba(255,255,255,0.7)', fontSize:11 }}>Total Vant</div>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ padding:'16px 18px 40px' }}>
+              <div style={{ fontWeight:800, fontSize:14, marginBottom:12, color:'#374151' }}>
+                📋 Lis Fich ({selAjan.count})
+              </div>
+
+              {selAjan.fiches.map((f, i) => (
+                <div key={f.ticket||i}
+                  onClick={() => { setSelAjan(null); setTimeout(() => setSelFich(f), 100); }}
+                  style={{ borderRadius:10, padding:'12px 14px', marginBottom:8,
+                    border:'1px solid #e5e7eb', background:'white', cursor:'pointer' }}>
+                  {/* Ticket + Total */}
+                  <div style={{ display:'flex', justifyContent:'space-between',
+                    alignItems:'center', marginBottom:6 }}>
+                    <span style={{ fontWeight:900, fontFamily:'monospace', fontSize:14,
+                      color:'#f59e0b' }}>#{f.ticket}</span>
+                    <span style={{ fontWeight:900, fontSize:15, color:'#16a34a' }}>
+                      {parseFloat(f.vente||f.total||0).toFixed(0)}G
+                    </span>
+                  </div>
+                  {/* Tiraj + Dat */}
+                  <div style={{ display:'flex', justifyContent:'space-between',
+                    alignItems:'center', marginBottom:6 }}>
+                    <span style={{ fontSize:12, color:'#6b7280' }}>{f.tirage||'—'}</span>
+                    <span style={{ fontSize:11, color:'#9ca3af' }}>
+                      {f.heure || fmtDate(f.date)}
+                    </span>
+                  </div>
+                  {/* Boul yo (preview) */}
+                  {(f.rows||[]).length > 0 && (
+                    <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:6 }}>
+                      {(f.rows||[]).map((r, j) => (
+                        <div key={j} style={{ background:'#f1f5f9', borderRadius:6,
+                          padding:'3px 8px', display:'flex', gap:5, alignItems:'center' }}>
+                          <span style={{ fontSize:10, fontWeight:700,
+                            color: TYPE_COLORS[r.type]||'#555' }}>
+                            {TYPE_LABELS[r.type]||r.type}
+                          </span>
+                          <span style={{ fontFamily:'monospace', fontWeight:900, fontSize:13,
+                            color:'#1e293b' }}>{r.boule}</span>
+                          <span style={{ fontSize:11, fontWeight:700,
+                            color: r.gratuit?'#dc2626':'#16a34a' }}>
+                            {r.gratuit ? 'G' : `${r.mise||0}G`}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {/* Statut */}
+                  <Statut s={f.statut} />
+                </div>
+              ))}
             </div>
           </div>
         </div>
