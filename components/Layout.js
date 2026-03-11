@@ -6,8 +6,7 @@ import { getUser, clearAuth } from '../utils/auth';
 const SW = 268;
 
 const NAV = [
-  { href:'/dashboard',        icon:'🏠', label:'Tableau de bord' },
-  { href:'/dashboard/grafik', icon:'📊', label:'Grafik & Analiz' },
+  { href:'/dashboard',  icon:'🏠', label:'Tableau de bord' },
   { href:'/mon-compte', icon:'🏛', label:'Mon compte' },
   { href:'/paiement',   icon:'💳', label:'Paiement online' },
   { href:'/succursal',  icon:'🏛', label:'Succursal' },
@@ -18,7 +17,6 @@ const NAV = [
     { href:'/configurations/primes',          label:'Primes' },
     { href:'/configurations/tete-fiche',      label:'Tête Fiche' },
     { href:'/configurations/utilisateurs',    label:'Utilisateurs' },
-    { href:'/configurations/licence-pos',     label:'🔑 Lisans POS' },
   ]},
   { label:'Surveillance', icon:'🖥', sub:[
     { href:'/surveillance/statistiques',         label:'Statistiques' },

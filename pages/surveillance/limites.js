@@ -21,8 +21,10 @@ export default function Limites() {
   const [saving,   setSaving]   = useState(false);
   const [msg,      setMsg]      = useState('');
   const [newBoule, setNewBoule] = useState({ tirage:'', boule:'', limite:'' });
-  const [editAgent, setEditAgent] = useState(null); // { id, field, value }
+  const [editAgent, setEditAgent] = useState(null);
   const [savingAgent, setSavingAgent] = useState(false);
+  const [agentModal, setAgentModal] = useState(null);   // ajan ki seleksyone
+  const [agentLimForm, setAgentLimForm] = useState({}); // fòm limit konplè
 
   useEffect(() => { loadAll(); }, []);
 
@@ -97,6 +99,37 @@ export default function Limites() {
       });
       notify('✅ Limite ajan mete ajou!');
       setEditAgent(null);
+      loadAll();
+    } catch (e) { alert('Erè: ' + (e?.response?.data?.message || e.message)); }
+    setSavingAgent(false);
+  };
+
+  // ── Ouvri modal limite konplè pa ajan ────────────────────
+  const openAgentModal = (a) => {
+    setAgentModal(a);
+    setAgentLimForm({
+      borlette:    a.limBorlette  || '',
+      loto3:       a.limLoto3    || '',
+      mariage:     a.limMarriage  || '',
+      l4o1:        a.limL4P1     || '',
+      l4o2:        a.limL4P2     || '',
+      l4o3:        a.limL4P3     || '',
+      teteFich:         a.teteFich         || '',
+      teteFichDwat:     a.teteFichDwat     || '',
+      teteFichGauch:    a.teteFichGauch    || '',
+      teteFichMariage:  a.teteFichMariage  || '',
+      teteFichMariageGauch: a.teteFichMariageGauch || '',
+      limiteGain:  a.limiteGain  || '',
+    });
+  };
+
+  const saveFullAgentLimit = async () => {
+    if (!agentModal) return;
+    setSavingAgent(true);
+    try {
+      await api.put(`/api/admin/agents/${agentModal._id||agentModal.id}/limite`, agentLimForm);
+      notify('✅ Tout limite ajan sove!');
+      setAgentModal(null);
       loadAll();
     } catch (e) { alert('Erè: ' + (e?.response?.data?.message || e.message)); }
     setSavingAgent(false);
@@ -293,9 +326,9 @@ export default function Limites() {
                             )}
                           </td>
                           <td>
-                            <button onClick={() => setEditAgent({ id:a._id||a.id, field:'limiteGain', value:a.limiteGain||'Illimité' })}
-                              style={{ background:'#f3f4f6', border:'1px solid #ddd', borderRadius:5, padding:'4px 10px', cursor:'pointer', fontWeight:700, fontSize:11 }}>
-                              ✏️ Modifye
+                            <button onClick={() => openAgentModal(a)}
+                              style={{ background:'#1a73e8', color:'white', border:'none', borderRadius:6, padding:'5px 12px', cursor:'pointer', fontWeight:700, fontSize:11 }}>
+                              ⚙️ Limite Konplè
                             </button>
                           </td>
                         </tr>
@@ -309,6 +342,84 @@ export default function Limites() {
           </>}
         </div>
       </div>
+
+      {/* ══ MODAL LIMITE KONPLÈ PA AJAN ══ */}
+      {agentModal && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.6)', zIndex:3000,
+          display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}
+          onClick={() => setAgentModal(null)}>
+          <div style={{ background:'white', borderRadius:14, padding:0, width:'100%',
+            maxWidth:520, maxHeight:'90vh', overflowY:'auto' }}
+            onClick={e=>e.stopPropagation()}>
+            {/* Header */}
+            <div style={{ background:'linear-gradient(135deg,#1a73e8,#1557c0)', padding:'16px 20px',
+              borderRadius:'14px 14px 0 0', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <div>
+                <div style={{ color:'white', fontWeight:900, fontSize:16 }}>
+                  ⚙️ Limite — {agentModal.prenom} {agentModal.nom}
+                </div>
+                <div style={{ color:'rgba(255,255,255,0.7)', fontSize:12, marginTop:3 }}>
+                  @{agentModal.username}
+                </div>
+              </div>
+              <button onClick={() => setAgentModal(null)}
+                style={{ background:'rgba(255,255,255,0.2)', border:'none', color:'white',
+                  borderRadius:8, width:32, height:32, cursor:'pointer', fontSize:16 }}>✕</button>
+            </div>
+
+            <div style={{ padding:20 }}>
+              <p style={{ margin:'0 0 16px', fontSize:12, color:'#888' }}>
+                💡 Mete <strong>0</strong> osinon kite vid pou limite jeneral la aplike.
+              </p>
+
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+                {[
+                  { key:'borlette',  label:'🎯 Borlette',      hint:'mise maks pa boul' },
+                  { key:'loto3',     label:'3️⃣ Loto 3',        hint:'mise maks pa boul' },
+                  { key:'mariage',   label:'💍 Mariage',        hint:'mise maks pa pè' },
+                  { key:'l4o1',      label:'4️⃣ L4 — P1',       hint:'mise maks' },
+                  { key:'l4o2',      label:'4️⃣ L4 — P2',       hint:'mise maks' },
+                  { key:'l4o3',      label:'4️⃣ L4 — P3',       hint:'mise maks' },
+                  { key:'teteFich',       label:'📋 Tèt Fich Loto3',  hint:'non ki parèt sou tèt' },
+                  { key:'teteFichDwat',   label:'📋 Tèt Fich L3 Dwat',hint:'non dwat' },
+                  { key:'teteFichGauch',  label:'📋 Tèt Fich L3 Goch',hint:'non goch' },
+                  { key:'teteFichMariage',label:'💍 Tèt Fich Mariage', hint:'non mariage' },
+                  { key:'teteFichMariageGauch', label:'💍 Tèt Fich Mar. Goch', hint:'non goch' },
+                  { key:'limiteGain', label:'🏆 Limite Gain', hint:'gain maks total' },
+                ].map(({ key, label, hint }) => (
+                  <div key={key} style={{ background:'#f8faff', border:'1px solid #e0eaff',
+                    borderRadius:8, padding:12 }}>
+                    <label style={{ display:'block', fontSize:11, fontWeight:800, color:'#374151',
+                      marginBottom:5 }}>{label}</label>
+                    <input
+                      type="text"
+                      value={agentLimForm[key] ?? ''}
+                      onChange={e => setAgentLimForm(f => ({ ...f, [key]: e.target.value }))}
+                      placeholder={hint}
+                      style={{ width:'100%', padding:'8px 10px', border:'1.5px solid #c7d7f8',
+                        borderRadius:6, fontSize:13, fontWeight:700, boxSizing:'border-box' }}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ display:'flex', gap:10, marginTop:20 }}>
+                <button onClick={() => setAgentModal(null)}
+                  style={{ flex:1, padding:12, background:'#f3f4f6', border:'none', borderRadius:8,
+                    fontWeight:700, cursor:'pointer' }}>
+                  Anile
+                </button>
+                <button onClick={saveFullAgentLimit} disabled={savingAgent}
+                  style={{ flex:2, padding:12, background:savingAgent?'#ccc':'#1a73e8', color:'white',
+                    border:'none', borderRadius:8, fontWeight:800, cursor:'pointer', fontSize:14 }}>
+                  {savingAgent ? '⏳...' : '💾 Sove Limite Ajan'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </Layout>
   );
 }

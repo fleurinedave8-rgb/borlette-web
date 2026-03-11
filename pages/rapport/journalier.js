@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import Layout from '../../components/Layout';
 import api from '../../utils/api';
-import { exportPDF, exportCSV } from '../../utils/exportPDF';
 
 export default function Journalier() {
   const today = new Date().toISOString().split('T')[0];
@@ -12,7 +11,6 @@ export default function Journalier() {
   const [superviseurs, setSuperviseurs] = useState([]);
   const [recap, setRecap]   = useState(null);
   const [loading, setLoading] = useState(false);
-  const [pdfLoading, setPdfLoading] = useState(false);
   const [search, setSearch] = useState('');
 
   const load = async () => {
@@ -30,38 +28,10 @@ export default function Journalier() {
 
   const filteredAgents = agents.filter(a => !search || [a.agent,a.tfiche,a.vente].some(v=>String(v||'').toLowerCase().includes(search.toLowerCase())));
 
-  const handleCopy  = () => { navigator.clipboard?.writeText(filteredAgents.map((a,i)=>`${i+1}\t${a.agent}\t${a.tfiche}\t${a.vente}`).join('\n')); alert('Copié!'); };
-  
-  const handleExcel = () => exportCSV({
-    titre: 'rapport-journalier',
-    colonnes: [
-      { key:'agent', header:'Agent' }, { key:'tfiche', header:'T.Fiche' },
-      { key:'vente', header:'Vente (G)' }, { key:'apaye', header:'A Payé' },
-      { key:'pctAgent', header:'% Agent' }, { key:'bFinal', header:'B.Final' },
-    ],
-    donnees: filteredAgents,
-  });
-
-  const handlePDF = async () => {
-    setPdfLoading(true);
-    try {
-      await exportPDF({
-        titre: 'Rapport Journalier',
-        soustTitre: `Peryòd: ${debut} → ${fin}`,
-        filtre: `${filteredAgents.length} ajan • ${qtyPos} POS`,
-        colonnes: [
-          { header: '#',      key: '_idx',    width: 12 },
-          { header: 'Agent',  key: 'agent',   width: 40 },
-          { header: 'T.Fiche', key: 'tfiche', width: 20, align: 'right' },
-          { header: 'Vente (G)', key: 'vente', width: 28, align: 'right', total: true, format: v => parseFloat(v||0).toLocaleString() },
-          { header: 'A Payé', key: 'apaye',   width: 25, align: 'right' },
-          { header: '% Agent', key: 'pctAgent', width: 18, align: 'center' },
-          { header: 'P/P',    key: 'ppAvec',  width: 25, align: 'right' },
-          { header: 'B.Final', key: 'bFinal', width: 28, align: 'right', total: true, format: v => parseFloat(v||0).toLocaleString() },
-        ],
-        donnees: filteredAgents.map((a, i) => ({ ...a, _idx: i + 1 })),
-      });
-    } finally { setPdfLoading(false); }
+  const handleCopy  = () => { navigator.clipboard?.writeText(filteredAgents.map((a,i)=>`${i+1}\t${a.agent}\t${a.tfiche}\t${a.vente}\t${a.apaye}\t${a.pctAgent}\t${a.ppSans}\t${a.ppAvec}\t${a.pctSup}\t${a.bFinal}`).join('\n')); alert('Copié!'); };
+  const handleExcel = () => {
+    const csv=[['No','Agent','TFiche','Vente','A payé','%Agent','P/P sans %agent','P/P avec %agent','%Sup','B.Final'],...filteredAgents.map((a,i)=>[i+1,a.agent,a.tfiche,a.vente,a.apaye,a.pctAgent,a.ppSans,a.ppAvec,a.pctSup,a.bFinal])].map(r=>r.join(',')).join('\n');
+    const el=document.createElement('a'); el.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv); el.download='journalier.csv'; el.click();
   };
 
   return (
@@ -97,13 +67,9 @@ export default function Journalier() {
           {/* SECTION AGENTS */}
           <h3 style={{ fontWeight:800, marginBottom:10 }}>Agents</h3>
           <div style={{ display:'flex', gap:8, marginBottom:10, flexWrap:'wrap' }}>
-            {[['COPIER',handleCopy],['EXCEL',handleExcel]].map(([l,fn])=>(
+            {[['COPIER',handleCopy],['EXCEL',handleExcel],['PDF',()=>window.print()],['IMPRIMER',()=>window.print()]].map(([l,fn])=>(
               <button key={l} onClick={fn} style={{ background:'white', border:'1px solid #ccc', borderRadius:3, padding:'6px 14px', fontWeight:700, fontSize:13, cursor:'pointer' }}>{l}</button>
             ))}
-            <button onClick={handlePDF} disabled={pdfLoading} style={{ background:'#dc2626', color:'#fff', border:'none', borderRadius:3, padding:'6px 14px', fontWeight:700, fontSize:13, cursor:'pointer' }}>
-              {pdfLoading ? '⏳ PDF...' : '📄 PDF'}
-            </button>
-            <button onClick={()=>window.print()} style={{ background:'white', border:'1px solid #ccc', borderRadius:3, padding:'6px 14px', fontWeight:700, fontSize:13, cursor:'pointer' }}>IMPRIMER</button>
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
             <label style={{ fontWeight:700, fontSize:13 }}>Search:</label>
