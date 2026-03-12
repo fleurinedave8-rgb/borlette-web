@@ -2,174 +2,270 @@ import { useState, useEffect } from 'react';
 import Layout from '../../components/Layout';
 import api from '../../utils/api';
 
-const defaultPrimes = [
-  { code:20,  type:'Borlette',             prime:'60|20|10', description:'1er lot 60%, 2em 20%, 3em 10%' },
-  { code:30,  type:'Loto 3',               prime:'500',      description:'Pou chak goud' },
-  { code:40,  type:'Mariage',              prime:'1000',     description:'Pou chak goud' },
-  { code:41,  type:'L4O1',                 prime:'5000',     description:'Loto4 1er position' },
-  { code:42,  type:'L4O2',                 prime:'5000',     description:'Loto4 2em position' },
-  { code:43,  type:'L4O3',                 prime:'5000',     description:'Loto4 3em position' },
-  { code:51,  type:'L5O1',                 prime:'25000',    description:'Loto5 1er position' },
-  { code:52,  type:'L5O2',                 prime:'25000',    description:'Loto5 2em position' },
-  { code:53,  type:'L5O3',                 prime:'25000',    description:'Loto5 3em position' },
-  { code:44,  type:'Mariage Gratuit',      prime:'2000',     description:'Pou chak goud' },
-  { code:105, type:'Tet fich',             prime:'0',        description:'Tèt fiche normal' },
-  { code:106, type:'Tet fich loto3',       prime:'0',        description:'Tèt fiche loto3' },
-  { code:107, type:'Tet fich mariaj dwat', prime:'0',        description:'Tèt fiche mariage droite' },
-  { code:108, type:'Tet fich mariaj gauch',prime:'0',        description:'Tèt fiche mariage gauche' },
+// ── DONE DEFÒLT PRIMES ─────────────────────────────────────────
+const PRIMES_DEFOLT = [
+  // ── JENERAL (bleu) ──
+  { code:20,  categorie:'general', type:'Borlette',            prime1:50,  prime2:20,  prime3:500,  desc:'1er: 1G→50 | 2em: 1G→20 | 3em: 1G→500' },
+  { code:30,  categorie:'general', type:'Loto 3',              prime1:500, prime2:0,   prime3:0,    desc:'1G → 500G' },
+  { code:40,  categorie:'general', type:'Mariage',             prime1:5000,prime2:0,   prime3:0,    desc:'1G → 5000G' },
+  { code:41,  categorie:'general', type:'L4O1 (Loto4 Pos1)',   prime1:500, prime2:0,   prime3:0,    desc:'1G → 500G (1ère pos)' },
+  { code:43,  categorie:'general', type:'L4O3 (Loto4 Pos3)',   prime1:500, prime2:0,   prime3:0,    desc:'1G → 500G (3ème pos)' },
+  { code:51,  categorie:'general', type:'L5O1 (Loto5 Pos1)',   prime1:25000,prime2:0,  prime3:0,   desc:'1G → 25000G' },
+  { code:52,  categorie:'general', type:'L5O2 (Loto5 Pos2)',   prime1:25000,prime2:0,  prime3:0,   desc:'1G → 25000G' },
+  { code:53,  categorie:'general', type:'L5O3 (Loto5 Pos3)',   prime1:25000,prime2:0,  prime3:0,   desc:'1G → 25000G' },
+  { code:44,  categorie:'general', type:'Mariage Gratuit',     prime1:2000,prime2:0,   prime3:0,    desc:'Fiks: 2000G' },
+  // ── TÈT FICH (jeneral tou) ──
+  { code:105, categorie:'general', type:'Tèt Fich (Borlette)', prime1:0,   prime2:0,   prime3:0,    desc:'—' },
+  { code:106, categorie:'general', type:'Tèt Fich Loto3 Dwat', prime1:0,   prime2:0,   prime3:0,    desc:'—' },
+  { code:107, categorie:'general', type:'Tèt Fich Mariage Dwat',prime1:0,  prime2:0,   prime3:0,    desc:'—' },
+  { code:108, categorie:'general', type:'Tèt Fich Loto3 Goch', prime1:0,   prime2:0,   prime3:0,    desc:'—' },
+  { code:109, categorie:'general', type:'Tèt Fich Mariage Goch',prime1:0,  prime2:0,   prime3:0,    desc:'—' },
 ];
 
-const TABS = [
-  { key:'general', label:'🔵 Général' },
-  { key:'tirage',  label:'🟢 Par Tirage' },
-  { key:'paire',   label:'🟡 Boule paire et grappe' },
-];
+const CAT_CFG = {
+  general: { label:'🔵 Général',          color:'#1a73e8', bg:'#eff6ff', border:'#bfdbfe', header:'#1a73e8' },
+  tirage:  { label:'🟢 Par Tiraj',         color:'#16a34a', bg:'#f0fdf4', border:'#bbf7d0', header:'#16a34a' },
+  paire:   { label:'🟡 Boule Paire & Grappe',color:'#854d0e',bg:'#fefce8',border:'#fde68a', header:'#ca8a04' },
+};
+const TABS = ['general','tirage','paire'];
 
 export default function Primes() {
-  const [tab, setTab]           = useState('general');
-  const [primes, setPrimes]     = useState(defaultPrimes);
-  const [editItem, setEditItem] = useState(null);
-  const [primeVal, setPrimeVal] = useState('');
-  const [descVal, setDescVal]   = useState('');
-  const [saving, setSaving]     = useState(false);
-  const [saved, setSaved]       = useState(false);
-  const [showAdd, setShowAdd]   = useState(false);
-  const [newPrime, setNewPrime] = useState({ code:'', type:'', prime:'', description:'' });
+  const [tab,      setTab]      = useState('general');
+  const [primes,   setPrimes]   = useState(PRIMES_DEFOLT);
+  const [editing,  setEditing]  = useState(null);  // prime aktyèl k ap edite
+  const [form,     setForm]     = useState({});
+  const [saving,   setSaving]   = useState(false);
+  const [msg,      setMsg]      = useState('');
+  const [loading,  setLoading]  = useState(true);
 
-  const openEdit = (p) => { setEditItem(p); setPrimeVal(p.prime); setDescVal(p.description||''); };
+  useEffect(()=>{
+    api.get('/api/admin/primes').then(r=>{
+      if (Array.isArray(r.data) && r.data.length>0) setPrimes(r.data);
+    }).catch(()=>{}).finally(()=>setLoading(false));
+  },[]);
 
-  const handleSave = async () => {
+  const notify = (text,ok=true) => {
+    setMsg(text);
+    setTimeout(()=>setMsg(''),3500);
+  };
+
+  const openEdit = (p) => {
+    setEditing(p.code);
+    setForm({
+      prime1: p.prime1||0,
+      prime2: p.prime2||0,
+      prime3: p.prime3||0,
+      desc:   p.desc||'',
+    });
+  };
+
+  const cancelEdit = () => { setEditing(null); setForm({}); };
+
+  const saveEdit = async (code) => {
     setSaving(true);
+    const updated = primes.map(p =>
+      p.code===code ? {...p, prime1:Number(form.prime1||0),
+        prime2:Number(form.prime2||0), prime3:Number(form.prime3||0), desc:form.desc||p.desc} : p
+    );
+    setPrimes(updated);
     try {
-      const updated = primes.map(p => p.code === editItem.code ? { ...p, prime: primeVal, description: descVal } : p);
-      setPrimes(updated);
-      await api.put('/api/admin/primes', updated).catch(() => {});
-      setSaved(true); setTimeout(() => setSaved(false), 2000);
-      setEditItem(null);
-    } finally { setSaving(false); }
+      await api.put('/api/admin/primes', updated);
+      notify('✅ Prime modifye avèk siksè!');
+    } catch { notify('⚠️ Sove lokalman — backend pa disponib', false); }
+    setSaving(false);
+    setEditing(null);
   };
 
-  const handleAdd = () => {
-    if (!newPrime.type || !newPrime.prime) return;
-    setPrimes(p => [...p, { ...newPrime, code: Date.now() }]);
-    setNewPrime({ code:'', type:'', prime:'', description:'' });
-    setShowAdd(false);
-  };
-
-  const handleDelete = (code) => {
-    if (!confirm('Efase prime sa a?')) return;
-    setPrimes(p => p.filter(x => x.code !== code));
-  };
+  const visiblePrimes = primes.filter(p => p.categorie === tab || (!p.categorie && tab==='general'));
+  const cfg = CAT_CFG[tab];
 
   return (
     <Layout>
-      <div style={{ maxWidth:900, margin:'0 auto' }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
-          <h1 style={{ margin:0, fontSize:20, fontWeight:800 }}>Configuration des Primes</h1>
-          <button onClick={() => setShowAdd(true)}
-            style={{ background:'#16a34a', color:'white', border:'none', borderRadius:8, padding:'10px 18px', fontWeight:700, cursor:'pointer' }}>
-            + Ajouter Prime
-          </button>
+      <div style={{maxWidth:1000,margin:'0 auto',padding:'0 8px'}}>
+
+        {/* BANNIÈRE */}
+        <div style={{background:'linear-gradient(135deg,#1e293b,#0f172a)',
+          borderRadius:12,padding:'14px 20px',marginBottom:14,
+          display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <div>
+            <div style={{color:'#f59e0b',fontWeight:900,fontSize:18}}>💎 KONFIGURASYON PRIMES</div>
+            <div style={{color:'rgba(255,255,255,0.6)',fontSize:12}}>LA-PROBITE-BORLETTE</div>
+          </div>
+          <div style={{textAlign:'right',color:'rgba(255,255,255,0.6)',fontSize:11}}>
+            <div>Minimum vant: 1 Goud</div>
+            <div>Mariage Gratuit: 2,000 G</div>
+          </div>
         </div>
 
-        {/* TABS */}
-        <div style={{ display:'flex', gap:8, marginBottom:16 }}>
-          {TABS.map(t => (
-            <button key={t.key} onClick={() => setTab(t.key)}
-              style={{ background: tab===t.key ? '#1a73e8' : '#e5e7eb', color: tab===t.key ? 'white' : '#333', border:'none', borderRadius:8, padding:'8px 16px', fontWeight:700, cursor:'pointer', fontSize:13 }}>
-              {t.label}
-            </button>
-          ))}
-        </div>
-
-        {saved && <div style={{ background:'#d1fae5', border:'1px solid #16a34a', borderRadius:8, padding:'10px 16px', marginBottom:12, color:'#065f46', fontWeight:700 }}>✅ Prime modifye avèk siksè !</div>}
-
-        {/* EDIT FORM */}
-        {editItem && (
-          <div style={{ background:'white', borderRadius:12, padding:24, marginBottom:16, boxShadow:'0 2px 8px rgba(0,0,0,0.1)', border:'2px solid #1a73e8' }}>
-            <h3 style={{ margin:'0 0 16px', fontWeight:800, color:'#1a73e8' }}>✏️ Modifye : {editItem.type}</h3>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:16 }}>
-              <div>
-                <label style={{ display:'block', fontSize:12, color:'#666', marginBottom:4, fontWeight:600 }}>Kòd</label>
-                <input value={editItem.code} readOnly style={{ width:'100%', padding:'9px 12px', border:'1px solid #ddd', borderRadius:6, background:'#f8f9fa', boxSizing:'border-box' }} />
-              </div>
-              <div>
-                <label style={{ display:'block', fontSize:12, color:'#666', marginBottom:4, fontWeight:600 }}>Type</label>
-                <input value={editItem.type} readOnly style={{ width:'100%', padding:'9px 12px', border:'1px solid #ddd', borderRadius:6, background:'#f8f9fa', boxSizing:'border-box' }} />
-              </div>
-              <div>
-                <label style={{ display:'block', fontSize:12, color:'#666', marginBottom:4, fontWeight:600 }}>Prime *</label>
-                <input value={primeVal} onChange={e => setPrimeVal(e.target.value)}
-                  style={{ width:'100%', padding:'9px 12px', border:'2px solid #16a34a', borderRadius:6, fontSize:14, fontWeight:700, boxSizing:'border-box' }} />
-              </div>
-              <div>
-                <label style={{ display:'block', fontSize:12, color:'#666', marginBottom:4, fontWeight:600 }}>Deskripsyon</label>
-                <input value={descVal} onChange={e => setDescVal(e.target.value)}
-                  style={{ width:'100%', padding:'9px 12px', border:'1px solid #ddd', borderRadius:6, fontSize:14, boxSizing:'border-box' }} />
-              </div>
-            </div>
-            <div style={{ display:'flex', gap:10 }}>
-              <button onClick={handleSave} disabled={saving}
-                style={{ flex:1, padding:'11px', background:'#1a73e8', color:'white', border:'none', borderRadius:8, fontWeight:700, cursor:'pointer' }}>
-                {saving ? 'Sauvegarde...' : '✅ Modifier'}
-              </button>
-              <button onClick={() => setEditItem(null)}
-                style={{ flex:1, padding:'11px', background:'#f0f0f0', border:'none', borderRadius:8, cursor:'pointer', fontWeight:700 }}>
-                Anile
-              </button>
-            </div>
+        {msg && (
+          <div style={{background:msg.includes('✅')?'#dcfce7':'#fef9c3',
+            border:`1px solid ${msg.includes('✅')?'#16a34a':'#ca8a04'}`,
+            color:msg.includes('✅')?'#166534':'#854d0e',
+            padding:'10px 16px',borderRadius:10,marginBottom:12,fontWeight:700}}>
+            {msg}
           </div>
         )}
 
-        {/* TABLE */}
-        <div style={{ background:'white', borderRadius:8, boxShadow:'0 1px 3px rgba(0,0,0,0.08)', overflow:'auto' }}>
-          <table style={{ width:'100%', borderCollapse:'collapse' }}>
-            <thead>
-              <tr style={{ background:'#f8f9fa' }}>
-                {['Kòd','Type','Deskripsyon','Prime','Actions'].map(h => (
-                  <th key={h} style={{ padding:'10px 14px', textAlign:'left', fontSize:12, fontWeight:700, color:'#555', borderBottom:'2px solid #eee' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {primes.map((p, i) => (
-                <tr key={p.code} style={{ borderBottom:'1px solid #f0f0f0', background: editItem?.code===p.code ? '#eff6ff' : 'white' }}>
-                  <td style={{ padding:'10px 14px', fontWeight:700, color:'#1a73e8' }}>{p.code}</td>
-                  <td style={{ padding:'10px 14px', fontWeight:600 }}>{p.type}</td>
-                  <td style={{ padding:'10px 14px', fontSize:12, color:'#666' }}>{p.description || '-'}</td>
-                  <td style={{ padding:'10px 14px' }}>
-                    <span style={{ background:'#d1fae5', color:'#065f46', padding:'3px 10px', borderRadius:20, fontSize:12, fontWeight:800 }}>{p.prime}</span>
-                  </td>
-                  <td style={{ padding:'10px 14px' }}>
-                    <div style={{ display:'flex', gap:6 }}>
-                      <button onClick={() => openEdit(p)}
-                        style={{ background:'#f59e0b', color:'white', border:'none', borderRadius:5, padding:'5px 12px', fontSize:12, cursor:'pointer', fontWeight:700 }}>✏️ Modifier</button>
-                      <button onClick={() => handleDelete(p.code)}
-                        style={{ background:'#dc2626', color:'white', border:'none', borderRadius:5, padding:'5px 10px', fontSize:12, cursor:'pointer', fontWeight:700 }}>🗑</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        {/* TABS */}
+        <div style={{display:'flex',gap:8,marginBottom:16}}>
+          {TABS.map(k=>{
+            const c=CAT_CFG[k];
+            return (
+              <button key={k} onClick={()=>setTab(k)}
+                style={{flex:1,padding:'12px 8px',border:`2px solid ${c.color}`,borderRadius:12,
+                  background:tab===k?c.color:'white',color:tab===k?'white':c.color,
+                  fontWeight:800,cursor:'pointer',fontSize:13,transition:'all 0.15s'}}>
+                {c.label}
+              </button>
+            );
+          })}
         </div>
 
-        {/* MODAL AJOUTER */}
-        {showAdd && (
-          <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
-            <div style={{ background:'white', borderRadius:12, padding:28, width:'100%', maxWidth:420 }}>
-              <h3 style={{ margin:'0 0 20px', fontWeight:800 }}>➕ Ajouter Prime</h3>
-              {[['type','Type *','text'],['prime','Prime *','text'],['description','Deskripsyon','text']].map(([key,label,type]) => (
-                <div key={key} style={{ marginBottom:12 }}>
-                  <label style={{ display:'block', fontSize:12, color:'#666', marginBottom:4, fontWeight:600 }}>{label}</label>
-                  <input type={type} value={newPrime[key]} onChange={e => setNewPrime(p=>({...p,[key]:e.target.value}))}
-                    style={{ width:'100%', padding:'9px 12px', border:'1px solid #ddd', borderRadius:6, fontSize:14, boxSizing:'border-box' }} />
-                </div>
-              ))}
-              <div style={{ display:'flex', gap:10, marginTop:16 }}>
-                <button onClick={handleAdd} style={{ flex:1, padding:'11px', background:'#16a34a', color:'white', border:'none', borderRadius:8, fontWeight:700, cursor:'pointer' }}>✅ Ajouter</button>
-                <button onClick={() => setShowAdd(false)} style={{ flex:1, padding:'11px', background:'#f0f0f0', border:'none', borderRadius:8, cursor:'pointer', fontWeight:700 }}>Anile</button>
-              </div>
+        {/* LÉGENDE */}
+        <div style={{background:cfg.bg,border:`1px solid ${cfg.border}`,
+          borderRadius:10,padding:'10px 16px',marginBottom:14,
+          display:'flex',gap:20,flexWrap:'wrap'}}>
+          <div style={{fontSize:12,color:cfg.color,fontWeight:700}}>
+            ℹ️ {tab==='general'
+              ? 'Primes jeneral pou tout tiraj — Borlette: 1G→1er:50G | 2em:20G | 3em:500G'
+              : tab==='tirage'
+              ? 'Primes spesyal pa tiraj — diferan de primes jeneral yo'
+              : 'Boule paire (2,4,6...) ak grappe (seri 3 boul) — prime espesyal'}
+          </div>
+        </div>
+
+        {loading
+          ? <div style={{textAlign:'center',padding:40,color:'#888'}}>⏳ Ap chaje primes...</div>
+          : (
+          <div style={{background:'white',borderRadius:12,
+            boxShadow:'0 2px 8px rgba(0,0,0,0.08)',overflow:'hidden'}}>
+
+            {/* TABLE HEADER */}
+            <div style={{background:cfg.header,padding:'12px 16px'}}>
+              <span style={{color:'white',fontWeight:900,fontSize:14}}>{cfg.label}</span>
+              <span style={{color:'rgba(255,255,255,0.7)',fontSize:12,marginLeft:12}}>
+                {visiblePrimes.length} tip jeu
+              </span>
+            </div>
+
+            <table style={{width:'100%',borderCollapse:'collapse'}}>
+              <thead>
+                <tr style={{background:'#f8f9fa',borderBottom:'2px solid #e5e7eb'}}>
+                  {['Kòd','Type Jeu','Prime 1er (pou 1G)','Prime 2em','Prime 3em','Aksyon'].map(h=>(
+                    <th key={h} style={{padding:'10px 14px',fontWeight:800,fontSize:11,
+                      color:'#374151',textAlign:'left',whiteSpace:'nowrap'}}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {visiblePrimes.length===0
+                  ? <tr><td colSpan={6} style={{padding:24,textAlign:'center',color:'#888',fontStyle:'italic'}}>
+                      Pa gen primes pou kategori sa — Ajoute yo pi ba
+                    </td></tr>
+                  : visiblePrimes.map((p,i)=>(
+                    <tr key={p.code} style={{borderBottom:'1px solid #f3f4f6',
+                      background:editing===p.code?`${cfg.bg}`:i%2===0?'white':'#fafafa'}}>
+                      
+                      {/* KÒD */}
+                      <td style={{padding:'12px 14px'}}>
+                        <span style={{background:cfg.bg,color:cfg.color,
+                          borderRadius:8,padding:'4px 10px',fontWeight:800,
+                          fontSize:13,fontFamily:'monospace'}}>
+                          {p.code}
+                        </span>
+                      </td>
+
+                      {/* TYPE */}
+                      <td style={{padding:'12px 14px',fontWeight:700,fontSize:13,color:'#111'}}>
+                        {p.type}
+                      </td>
+
+                      {/* PRIMES — EDIT MODE */}
+                      {editing===p.code ? (
+                        <>
+                          {['prime1','prime2','prime3'].map((f,idx)=>(
+                            <td key={f} style={{padding:'8px 14px'}}>
+                              <div style={{display:'flex',alignItems:'center',gap:4}}>
+                                <span style={{fontSize:11,color:'#888'}}>1G→</span>
+                                <input type="number" min="0" value={form[f]||0}
+                                  onChange={e=>setForm(prev=>({...prev,[f]:e.target.value}))}
+                                  style={{width:90,padding:'7px 10px',border:`2px solid ${cfg.color}`,
+                                    borderRadius:8,fontSize:14,fontWeight:700,
+                                    textAlign:'right',color:cfg.color}}/>
+                                <span style={{fontSize:11,color:'#888'}}>G</span>
+                              </div>
+                            </td>
+                          ))}
+                          <td style={{padding:'8px 14px'}}>
+                            <div style={{display:'flex',gap:6}}>
+                              <button onClick={()=>saveEdit(p.code)} disabled={saving}
+                                style={{background:'#16a34a',color:'white',border:'none',
+                                  borderRadius:8,padding:'8px 16px',fontWeight:700,
+                                  cursor:'pointer',fontSize:12}}>
+                                {saving?'⏳':'✅ Sove'}
+                              </button>
+                              <button onClick={cancelEdit}
+                                style={{background:'#f3f4f6',color:'#555',border:'none',
+                                  borderRadius:8,padding:'8px 12px',fontWeight:700,
+                                  cursor:'pointer',fontSize:12}}>
+                                ✕
+                              </button>
+                            </div>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          {/* AFFICHAGE PRIMES */}
+                          <td style={{padding:'12px 14px'}}>
+                            {p.prime1>0 ? (
+                              <span style={{background:'#dcfce7',color:'#166534',
+                                borderRadius:20,padding:'4px 12px',fontWeight:800,fontSize:13}}>
+                                1G → {Number(p.prime1).toLocaleString('fr')} G
+                              </span>
+                            ) : <span style={{color:'#ccc',fontSize:12}}>—</span>}
+                          </td>
+                          <td style={{padding:'12px 14px'}}>
+                            {p.prime2>0 ? (
+                              <span style={{background:'#fef9c3',color:'#854d0e',
+                                borderRadius:20,padding:'4px 12px',fontWeight:800,fontSize:13}}>
+                                1G → {Number(p.prime2).toLocaleString('fr')} G
+                              </span>
+                            ) : <span style={{color:'#ccc',fontSize:12}}>—</span>}
+                          </td>
+                          <td style={{padding:'12px 14px'}}>
+                            {p.prime3>0 ? (
+                              <span style={{background:'#eff6ff',color:'#1e40af',
+                                borderRadius:20,padding:'4px 12px',fontWeight:800,fontSize:13}}>
+                                1G → {Number(p.prime3).toLocaleString('fr')} G
+                              </span>
+                            ) : <span style={{color:'#ccc',fontSize:12}}>—</span>}
+                          </td>
+
+                          {/* AKSYON */}
+                          <td style={{padding:'12px 14px'}}>
+                            <button onClick={()=>openEdit(p)}
+                              style={{background:cfg.color,color:'white',border:'none',
+                                borderRadius:8,padding:'7px 16px',fontWeight:700,
+                                cursor:'pointer',fontSize:12,transition:'opacity 0.15s'}}
+                              onMouseEnter={e=>e.currentTarget.style.opacity='0.85'}
+                              onMouseLeave={e=>e.currentTarget.style.opacity='1'}>
+                              ✏️ Modifye
+                            </button>
+                          </td>
+                        </>
+                      )}
+                    </tr>
+                  ))
+                }
+              </tbody>
+            </table>
+
+            {/* NOTE REFERANS */}
+            <div style={{background:'#f8f9fa',padding:'12px 16px',
+              borderTop:'1px solid #e5e7eb',fontSize:11,color:'#666'}}>
+              <strong>Referans Prime Standar:</strong>
+              {' '}Borlette: 1er→50G | 2em→20G | 3em→500G
+              {' '}· Loto3: 500G · Mariage: 5,000G · Loto4: 500G · Loto5: 25,000G · Mariage Gratuit: 2,000G (fiks)
             </div>
           </div>
         )}

@@ -37,6 +37,7 @@ const NAV = [
     { href:'/rapport/fiches-vendu',      label:'Fiches vendu' },
     { href:'/rapport/fiches-gagnant',    label:'Fiches gagnant' },
     { href:'/rapport/fiches-elimine',    label:'Fiches éliminé' },
+    { href:'/rapport/defisi',            label:'📉 Defisi / Profit' },
   ]},
   { href:'/kontabilite', icon:'📒', label:'Kontabilite' },
   { href:'/doleances', icon:'🗣️', label:'Doléances' },
@@ -310,6 +311,26 @@ export default function Layout({ children }) {
         </div>
 
         <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+          {/* SÈLEKTÈ 4 LANG */}
+          {!mobile && (
+            <div style={{ display:'flex', gap:3 }}>
+              {(['CR','FR','ES','EN']).map(l => {
+                const flags = {CR:'🇭🇹',FR:'🇫🇷',ES:'🇪🇸',EN:'🇺🇸'};
+                const stored = typeof localStorage!=='undefined'?localStorage.getItem('borlette_lang')||'CR':'CR';
+                return (
+                  <button key={l}
+                    onClick={()=>{ if(typeof localStorage!=='undefined'){localStorage.setItem('borlette_lang',l);} window.location.reload(); }}
+                    style={{ background:stored===l?'#f59e0b':'transparent',
+                      border:stored===l?'none':'1px solid #e5e7eb',
+                      borderRadius:6, padding:'3px 7px', cursor:'pointer',
+                      fontSize:11, fontWeight:800,
+                      color:stored===l?'#111':'#888' }}>
+                    {flags[l]}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           {user && !mobile && (
             <div style={{ display:'flex', alignItems:'center', gap:6, background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:20, padding:'4px 12px' }}>
               <span style={{ fontSize:13 }}>👤</span>
