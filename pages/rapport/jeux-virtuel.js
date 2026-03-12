@@ -1,3 +1,4 @@
+import Layout from '../../components/Layout';
 import { useState } from 'react';
 
 export default function JeuxVirtuel() {
@@ -15,6 +16,7 @@ export default function JeuxVirtuel() {
   ];
 
   return (
+    <Layout>
     <div className="card">
       <h2 className="card-title">Rapport jeux virtuel</h2>
 
