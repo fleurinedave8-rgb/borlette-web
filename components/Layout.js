@@ -12,6 +12,7 @@ const NAV = [
   { href:'/succursal',  icon:'🏛', label:'Succursal' },
   { href:'/agents',     icon:'👤', label:'Agents / POS' },
   { label:'Configurations', icon:'⚙️', sub:[
+    { href:'/configurations/pos',             label:'🖥️ Jesyon POS' },
     { href:'/configurations/mariage-gratuit', label:'Mariage gratuit' },
     { href:'/configurations/tirages',         label:'Tirages' },
     { href:'/configurations/primes',          label:'Primes' },
