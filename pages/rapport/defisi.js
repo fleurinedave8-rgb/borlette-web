@@ -1,3 +1,4 @@
+import useRealtime from '../../hooks/useRealtime';
 import { useState, useEffect } from 'react';
 import Layout from '../../components/Layout';
 import api from '../../utils/api';
@@ -56,6 +57,12 @@ export default function Defisi() {
       padding:'3px 12px',fontSize:11,fontWeight:800};
     return {background:'#f3f4f6',color:'#555',borderRadius:20,padding:'3px 12px',fontSize:11,fontWeight:800};
   };
+
+  // ── REYÈL-TAN: recharge otomatik chak 30s + WS ──
+  const { wsLive } = useRealtime({
+    autoReload: load,
+    reloadInterval: 30000,
+  });
 
   return (
     <Layout>

@@ -1,6 +1,7 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import Layout from '../../components/Layout';
 import api from '../../utils/api';
+import useRealtime from '../../hooks/useRealtime';
 
 const fmt  = n => Number(n||0).toLocaleString('fr-HT',{minimumFractionDigits:2,maximumFractionDigits:2});
 const fmtN = n => Number(n||0).toLocaleString('fr-HT');
@@ -12,16 +13,27 @@ export default function Journalier() {
   const [data,  setData]  = useState(null);
   const [loading, setLoading] = useState(false);
   const [search,  setSearch]  = useState('');
-  const printRef = useRef();
+  const printRef  = useRef();
+  const [liveCount, setLiveCount]   = useState(0);
+  const [autoLoad,  setAutoLoad]    = useState(true);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const r = await api.get('/api/rapport/journalier', { params:{debut,fin} });
       setData(r.data);
     } catch { setData(null); }
     setLoading(false);
-  };
+  }, [debut, fin]);
+
+  // ── REYÈL-TAN ──
+  useEffect(() => { load(); }, []);
+  const { wsLive } = useRealtime({
+    onFiche: () => { setLiveCount(c=>c+1); if(autoLoad) load(); },
+    onResultat: () => { if(autoLoad) load(); },
+    autoReload: autoLoad ? load : null,
+    reloadInterval: 60000,
+  });
 
   const agents = (data?.agents||[]).filter(a =>
     !search || [a.posId,a.agent,String(a.tfiche),a.vente]
@@ -107,7 +119,13 @@ export default function Journalier() {
               style={{width:'100%',padding:'10px',border:'1.5px solid #ddd',
                 borderRadius:8,fontSize:13,boxSizing:'border-box'}}/>
           </div>
-          <button onClick={load} disabled={loading}
+          <button onClick={()=>setAutoLoad(v=>!v)}
+                style={{ background: autoLoad?'#16a34a':'#374151', color:'white',
+                  border:'none', borderRadius:8, padding:'8px 12px',
+                  fontWeight:700, fontSize:12, cursor:'pointer', marginRight:6 }}>
+                {autoLoad ? '⏸ Poz' : '▶ Otomatik'}
+              </button>
+              <button onClick={load} disabled={loading}
             style={{padding:'10px 28px',background:loading?'#ccc':'#1a73e8',color:'white',
               border:'none',borderRadius:8,fontWeight:800,fontSize:14,cursor:loading?'default':'pointer',
               height:42,alignSelf:'flex-end'}}>

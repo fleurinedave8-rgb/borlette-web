@@ -1,3 +1,4 @@
+import useRealtime from '../../hooks/useRealtime';
 import { useState } from 'react';
 import Layout from '../../components/Layout';
 import api from '../../utils/api';
@@ -14,6 +15,12 @@ export default function VentesMatinSoir() {
     catch{ setData(null); }
     finally{ setLoading(false); }
   };
+
+  // ── REYÈL-TAN: recharge otomatik chak 30s + WS ──
+  const { wsLive } = useRealtime({
+    autoReload: load,
+    reloadInterval: 30000,
+  });
 
   return (
     <Layout>

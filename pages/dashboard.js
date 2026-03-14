@@ -1,3 +1,4 @@
+import WsBadge from '../components/WsBadge';
 import { useState, useEffect, useCallback } from 'react';
 import Layout from '../components/Layout';
 import api from '../utils/api';

@@ -1,3 +1,4 @@
+import useRealtime from '../../hooks/useRealtime';
 import { useState, useEffect } from 'react';
 import Layout from '../../components/Layout';
 import api from '../../utils/api';
@@ -60,6 +61,12 @@ export default function FichesElimine() {
 
   const thS = {padding:'10px 12px',fontWeight:800,fontSize:11,color:'white',
     whiteSpace:'nowrap',borderRight:'1px solid rgba(255,255,255,0.15)'};
+
+  // ── REYÈL-TAN: recharge otomatik chak 30s + WS ──
+  const { wsLive } = useRealtime({
+    autoReload: load,
+    reloadInterval: 30000,
+  });
 
   return (
     <Layout>
