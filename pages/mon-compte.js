@@ -340,7 +340,7 @@ export default function MonCompte() {
         )}
 
       </div>
-          </div>
+      </div>
     </Layout>
   );
 }
