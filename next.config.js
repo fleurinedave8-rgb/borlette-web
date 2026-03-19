@@ -1,4 +1,4 @@
-/** @type {import('next').NextConfig} */ // build 1773852745
+/** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: false,
   eslint: { ignoreDuringBuilds: true },

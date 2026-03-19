@@ -126,6 +126,7 @@ export default function PosConnectes() {
         </div>
 
       </div>
+          </div>
     </Layout>
   );
 }

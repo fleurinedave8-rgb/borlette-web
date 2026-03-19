@@ -178,6 +178,7 @@ export default function Tracabilite() {
           </div>
         )}
       </div>
+      </div>
     </Layout>
   );
 }

@@ -302,10 +302,18 @@ export default function Layout({ children }) {
         </button>
 
         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-          <span style={{ fontSize:18 }}>🔑</span>
-          <span style={{ fontWeight:900, fontSize:15, color:'#111827', letterSpacing:.5 }}>
-            LA-PROBITE-BORLETTE
-          </span>
+          <div style={{
+            background:'#f59e0b',
+            borderRadius:8,
+            padding:'5px 16px',
+            display:'flex', alignItems:'center', gap:8,
+          }}>
+            <span style={{ fontSize:16 }}>🔑</span>
+            <span style={{ fontWeight:900, fontSize:15, color:'#111', letterSpacing:.5 }}>
+              LA-PROBITE-BORLETTE
+            </span>
+          </div>
+        </div>
         </div>
 
         <div style={{ display:'flex', alignItems:'center', gap:12 }}>
