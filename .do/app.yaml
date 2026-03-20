@@ -1,0 +1,7 @@
+name: borlette-web
+region: nyc
+services:
+- name: borlette-web
+  build_command: npm run build
+  run_command: npm start
+  http_port: 8080
