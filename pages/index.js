@@ -69,7 +69,6 @@ export default function LoginPage() {
           <div>
             <div style={{ fontWeight:900, fontSize:13, lineHeight:1.2 }}>LA-PROBITE</div>
             <div style={{ fontWeight:900, fontSize:13, color:'#1a73e8' }}>BORLETTE</div>
-          </div>
         </div>
         <div style={{ display:'flex', gap:10 }}>
           <button onClick={() => { setShowRegister(true); setShowMenu(false); }} style={{ background:'#f59e0b', color:'black', border:'none', borderRadius:6, padding:'8px 16px', cursor:'pointer', fontWeight:700, fontSize:13 }}>
@@ -117,7 +116,6 @@ export default function LoginPage() {
             <div key={i} style={{ background: f.highlight ? 'linear-gradient(135deg,#7c3aed,#a78bfa)' : 'white', color: f.highlight ? 'white' : '#333', borderRadius:10, padding:'22px 16px', textAlign:'center', boxShadow:'0 2px 8px rgba(0,0,0,0.08)' }}>
               <div style={{ fontSize:28, marginBottom:8 }}>{f.icon}</div>
               <div style={{ fontSize:13, fontWeight:600 }}>{f.label}</div>
-            </div>
           ))}
         </div>
       </section>
@@ -136,7 +134,6 @@ export default function LoginPage() {
               allowFullScreen
             />
           </div>
-        </div>
       </section>
 
       {/* CONTACT */}
@@ -169,7 +166,6 @@ export default function LoginPage() {
             <p><strong>4. Vos droits</strong><br/>Vous avez le droit d'accéder, de modifier ou de supprimer vos données à tout moment en contactant notre support.</p>
             <p><strong>5. Contact</strong><br/>Pour toute question relative à votre vie privée : robensjeanpaul@gmail.com | +509 34 35 9470</p>
           </div>
-        </div>
       </section>
 
       {/* FOOTER ANIMÉ */}
@@ -203,7 +199,6 @@ export default function LoginPage() {
               WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
             }}>NEXTSTEPDIGITAL</div>
             <div style={{ fontSize:10, color:'#555' }}>📞 +509 41 76 24 10</div>
-          </div>
         </div>
 
         <p style={{ margin:'12px 0 0', fontSize:10, color:'#333', letterSpacing:1 }}>
@@ -238,7 +233,6 @@ export default function LoginPage() {
             </button>
             <button onClick={() => setShowLogin(false)} style={{ width:'100%', marginTop:8, padding:'8px', background:'transparent', border:'none', color:'#999', cursor:'pointer', fontSize:12 }}>Fermer</button>
           </div>
-        </div>
       )}
 
       {/* REGISTER MODAL */}
@@ -275,12 +269,18 @@ export default function LoginPage() {
             </button>
             <button onClick={() => setShowRegister(false)} style={{ width:'100%', marginTop:8, padding:'8px', background:'transparent', border:'none', color:'#999', cursor:'pointer', fontSize:12 }}>Fermer</button>
           </div>
-        </div>
       )}
-    </div>      </div>
+    </div>
       </div>
       </div>
-      </div>
-
+    </div>
+    </div>
+    </div>
+    </div>
+    </div>
+    </div>
+    </div>
+    </div>
+    </div>
   );
 }

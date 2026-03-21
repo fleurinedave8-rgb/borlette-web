@@ -92,7 +92,7 @@ export default function PosConnectes() {
             <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
               <thead>
                 <tr style={{ background:'#f8f9fa', borderBottom:'2px solid #dee2e6' }}>
-                  {['Statut','Nom POS','Device ID','Derniers Koneksyon','IP / Zone','Fichè Aujourd'hui','Version'].map(h => (
+                  {['Statut','Nom POS','Device ID','Derniers Koneksyon','IP / Zone','Fichè Aujourd&apos;hui','Version'].map(h => (
                     <th key={h} style={{ padding:'11px 14px', textAlign:'left', fontWeight:800, fontSize:12, color:'#374151' }}>{h}</th>
                   ))}
                 </tr>
@@ -123,8 +123,7 @@ export default function PosConnectes() {
               </tbody>
             </table>
           )}
-        </div>
-
+      </div>
       </div>
       </div>
     </Layout>
